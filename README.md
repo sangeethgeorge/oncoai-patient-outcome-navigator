@@ -40,7 +40,7 @@ An interactive, AI-driven dashboard for predicting oncology patient outcomes usi
         ┌────────▼────────────┐
         │ Streamlit Dashboard │
         └─────────────────────┘
-
+```
 ---
 
 ## 🧪 Data Source
@@ -106,6 +106,7 @@ pip install -r requirements.txt
 # Launch Streamlit app
 streamlit run streamlit_app/app.py
 
+```
 ---
 
 ## 🚀 Deployment

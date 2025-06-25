@@ -1,0 +1,12 @@
+# Ignore all raw data
+data/*
+
+# Ignore Jupyter and environment junk
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+.env
+
+# Ignore output formats
+*.parquet
+*.csv

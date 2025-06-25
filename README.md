@@ -1,124 +1,124 @@
-# 💊📈 OncoAI Patient Outcome Navigator
+# 🧠 OncoAI Patient Outcome Navigator (Prototype)
 
-
-**Predict oncology patient outcomes using EHR data + LLM-based explanations.**
-
-OncoAI is a full-stack AI platform that predicts clinical outcomes in ICU cancer patients using structured EHR data (labs, vitals, diagnoses) and unstructured notes. It combines machine learning, NLP, and survival analysis to deliver interpretable insights via an interactive Streamlit dashboard.
+An interactive, AI-driven dashboard for predicting oncology patient outcomes using structured and unstructured EHR data. Built as a full-stack proof-of-concept using the [MIMIC-IV demo dataset](https://physionet.org/content/mimic-iv-demo/2.2/), this project demonstrates end-to-end capabilities in data extraction, predictive modeling, clinical NLP, statistical validation, and user-facing dashboard design.
 
 ---
 
-## 🚀 Project Goals
+## 🎯 Project Goals
 
-- ✅ Predict 30-day mortality and other clinical outcomes
-- ✅ Integrate structured data (MIMIC-III: labs, vitals, diagnoses) + unstructured notes
-- ✅ Use LLMs to summarize patient history and explain predictions
-- ✅ Visualize risk factors and trends for clinical use
+- Extract and process a mock oncology cohort from MIMIC-IV demo using ICD-10 codes
+- Engineer time-series features from labs, vitals, and demographics
+- Train ML models to predict 30-day mortality with SHAP explainability
+- Use LLMs (e.g., GPT-4) to summarize clinical notes for interpretability
+- Visualize patient risk, lab/vital trends, and GPT-generated summaries in a Streamlit dashboard
+- Simulate statistical survival modeling using R (Kaplan-Meier, Cox regression)
 
 ---
 
 ## 🏗️ Project Architecture
 
-Data (MIMIC-III) → ETL → Feature Engineering → ML Model → LLM Explanation → Streamlit Dashboard
-
-
-- SQL + Pandas for cohort building and data wrangling  
-- Scikit-learn for modeling and SHAP-based interpretation  
-- spaCy + GPT-4 for clinical note parsing and summarization  
-- R for Cox regression and survival plots  
-- Streamlit for front-end dashboard
+```text
+        ┌────────────────────┐
+        │   MIMIC-IV Demo    │
+        └────────┬───────────┘
+                 │
+        ┌────────▼──────────┐
+        │  SQL + Pandas ETL │◄─────────────┐
+        └────────┬──────────┘              │
+        ┌────────▼────────────┐     ┌──────▼───────┐
+        │ Feature Engineering │◄───▶│ Clinical NLP │
+        └────────┬────────────┘     └──────┬───────┘
+                 │                         │
+        ┌────────▼──────────┐      ┌───────▼────────┐
+        │   ML Modeling     │      │  GPT Summary   │
+        └────────┬──────────┘      └───────┬────────┘
+                 │                         │
+        ┌────────▼──────────────┐          │
+        │  R Survival Modeling  │◄─────────┘
+        └────────┬──────────────┘
+                 │
+        ┌────────▼────────────┐
+        │ Streamlit Dashboard │
+        └─────────────────────┘
 
 ---
 
-## 🗃️ Repository Structure
+## 🧪 Data Source
 
-oncoai/
-├── data/ # Raw & processed data (excluded from GitHub)
-├── notebooks/ # Exploratory data analysis (Jupyter, R)
-├── src/ # Core Python modules (etl, modeling, dashboard)
-│ ├── etl.py
-│ ├── features.py
-│ ├── model.py
-│ ├── gpt_summarizer.py
-│ └── app.py
-├── reports/ # SHAP plots, survival curves, markdown outputs
-├── requirements.txt # Python dependencies
-├── README.md
-└── streamlit_app/ # Streamlit dashboard UI
+- **Dataset**: [MIMIC-IV Demo v2.2](https://physionet.org/content/mimic-iv-demo/2.2/)
+- **License**: PhysioNet Credentialed Health Data License 1.5.0
+- **Data Tables Used**:
+  - `patients`, `admissions` – demographics and mortality labels
+  - `diagnoses_icd` – oncology cohort extraction
+  - `labevents`, `chartevents` – vitals and lab values
+  - `noteevents` – free-text clinical notes (ICU)
 
 ---
 
 ## 📊 Dashboard Features
 
-- **Patient ID Lookup**  
-  View structured data and NLP summaries
-
-- **Risk Score + Explanation**  
-  SHAP values, Cox hazard ratios, key drivers
-
-- **Vitals/Labs Trend Plots**  
-  Time series visualization (e.g. CRP, WBC, BP)
-
-- **GPT-based Summary**  
-  Plain-English summaries of patient notes
+| Feature                             | Description |
+|------------------------------------|-------------|
+| 🔍 Patient Lookup                  | Select a mock patient to view clinical data |
+| 🧬 Lab/Vital Trends                | Time-series plots of selected labs (e.g., Hgb, CRP) |
+| 📉 Mortality Risk Prediction       | Model output (e.g., 0.72 risk score) with SHAP explanation |
+| 🧠 GPT-based Note Summarization   | Condensed patient history from ICU notes |
+| 📈 Survival Curves (R)             | Simulated Kaplan-Meier curves (high vs low risk) |
+| 🧰 Model Interpretability          | SHAP beeswarm + top contributing features |
+| 💡 LLM Explanation Layer           | Natural language summary of "why this patient is high-risk" |
 
 ---
 
-## 📦 Setup Instructions
+## 💻 Tech Stack
+
+| Layer              | Tools & Libraries |
+|-------------------|-------------------|
+| **Data**          | PostgreSQL, Pandas, SQLAlchemy |
+| **Modeling**      | Scikit-learn, SHAP |
+| **NLP**           | spaCy, SciSpacy, GPT-4 (OpenAI API) |
+| **Stats (R)**     | survival, survminer |
+| **Frontend**      | Streamlit, Plotly |
+| **Deployment**    | Docker, Streamlit Cloud, GitHub |
+
+---
+
+## 🧪 Results Snapshot (Demo Mode)
+
+| Task                      | Result |
+|---------------------------|--------|
+| Oncology cohort           | 5 simulated patients from demo ICD codes |
+| 30-day mortality model    | Logistic regression (AUC ~0.70, simulated) |
+| SHAP insights             | CRP ↑, Hgb ↓, MAP ↓ as top risk drivers |
+| GPT Summary (example)     | “This patient had progressive anemia, rising CRP, and hypotension prior to death.” |
+
+---
+
+## 📦 Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/oncoai-patient-outcome-navigator.git
+# Clone repo
+git clone https://github.com/sangeethgeorge/oncoai-patient-outcome-navigator.git
 cd oncoai-patient-outcome-navigator
 
-# Install Python dependencies
+# Install dependencies
 pip install -r requirements.txt
 
-# (Optional) Activate R environment for survival analysis
-# See R/README.md for details
-
-# Launch Streamlit dashboard
+# Launch Streamlit app
 streamlit run streamlit_app/app.py
 
-```
 ---
 
-## 🧪 Example Use Case
-"Given an ICU patient with stage IV NSCLC, abnormal CRP and WBC levels, and history of infection noted in discharge summaries, what is their predicted 30-day mortality risk and how is it explained?"
+## 🚀 Deployment
 
-→ OncoAI returns:
-
-30-day mortality risk = 67%
-
-Top risk drivers: high CRP, neutropenia, elevated lactate
-
-GPT summary: “Patient experienced sepsis 2 days post-chemo; elevated CRP levels noted; recent hypotension…”
+- Streamlit Cloud: streamlit_app/app.py
+- Docker containerization support (optional)
+- R scripts for survival analysis in /notebooks/
 
 ---
 
-## 📚 Data Source
-MIMIC-III v1.4 – Medical Information Mart for Intensive Care
-Requires credentialed access via PhysioNet.
+## 📌 Limitations
 
----
-
-## 🛠️ Tech Stack
-
-| Category | Tools Used |
-| --- | --- |
-| Data Wrangling | SQL, Pandas|
-| Modeling | Scikit-learn, SHAP |
-| NLP | spaCy, GPT-4, clinicalBERT (optional) |
-| Stats | R (survival, survminer) |
-| Dashboard | Streamlit, Plotly |
-| Deployment | Streamlit Cloud or Docker + EC2|
-
-## 📈 Roadmap
-
--  Baseline model with labs/vitals
--  GPT-based note summarization
--  Add comorbidity extraction from notes
--  Integrate SEER or MIMIC-IV for validation
--  Add treatment prediction module
+This project uses the MIMIC-IV demo dataset, which is highly restricted in patient volume and data diversity. While the pipelines and dashboard logic are realistic and reusable, the model outputs and subgroup insights are illustrative only. No clinical inference should be drawn from this prototype.
 
 ---
 

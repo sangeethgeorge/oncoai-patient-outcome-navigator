@@ -1,17 +1,23 @@
-# OncoAI Patient Outcome Navigator (Prototype)
+# OncoAI Patient Outcome Navigator
 
-An interactive, AI-driven dashboard for predicting oncology patient outcomes using structured and unstructured EHR data. Built as a full-stack proof-of-concept using the [MIMIC-III demo dataset](https://physionet.org/content/MIMIC-III-demo/2.2/), this project demonstrates end-to-end capabilities in data extraction, predictive modeling, clinical NLP, statistical validation, and user-facing dashboard design.
+**AI-driven clinical dashboard for predicting 30-day mortality in oncology ICU patients using MIMIC-III data**
+
+![Python](https://img.shields.io/badge/Python-3.9+-blue.svg) ![Streamlit](https://img.shields.io/badge/Streamlit-App-green.svg) ![scikit-learn](https://img.shields.io/badge/sklearn-Model-orange.svg) ![spaCy](https://img.shields.io/badge/NLP-spaCy%20%7C%20GPT4-lightgrey.svg)
 
 ---
 
-## Project Goals
+## Overview
 
-- Extract and process a mock oncology cohort from MIMIC-III demo using ICD-10 codes
-- Engineer time-series features from labs, vitals, and demographics
-- Train ML models to predict 30-day mortality with SHAP explainability
-- Use LLMs (e.g., GPT-4) to summarize clinical notes for interpretability
-- Visualize patient risk, lab/vital trends, and GPT-generated summaries in a Streamlit dashboard
-- Simulate statistical survival modeling using R (Kaplan-Meier, Cox regression)
+**OncoAI** is a research prototype that leverages electronic health record (EHR) data to:
+
+- Identify oncology ICU cohorts from MIMIC-III/IV using ICD-9/ICD-10 codes
+- Extract labs, vitals, and clinical notes to build structured and unstructured features
+- Train predictive models for 30-day mortality
+- Generate explainability outputs using SHAP
+- Summarize ICU patient notes using NLP + LLMs (spaCy, GPT-4)
+- Visualize patient-level insights in an interactive **Streamlit dashboard**
+
+> For academic/research use only — built using the MIMIC demo dataset.
 
 ---
 

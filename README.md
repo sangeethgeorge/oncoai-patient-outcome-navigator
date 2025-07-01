@@ -1,12 +1,12 @@
-# 🧠 OncoAI Patient Outcome Navigator (Prototype)
+# OncoAI Patient Outcome Navigator (Prototype)
 
-An interactive, AI-driven dashboard for predicting oncology patient outcomes using structured and unstructured EHR data. Built as a full-stack proof-of-concept using the [MIMIC-IV demo dataset](https://physionet.org/content/mimic-iv-demo/2.2/), this project demonstrates end-to-end capabilities in data extraction, predictive modeling, clinical NLP, statistical validation, and user-facing dashboard design.
+An interactive, AI-driven dashboard for predicting oncology patient outcomes using structured and unstructured EHR data. Built as a full-stack proof-of-concept using the [MIMIC-III demo dataset](https://physionet.org/content/MIMIC-III-demo/2.2/), this project demonstrates end-to-end capabilities in data extraction, predictive modeling, clinical NLP, statistical validation, and user-facing dashboard design.
 
 ---
 
-## 🎯 Project Goals
+## Project Goals
 
-- Extract and process a mock oncology cohort from MIMIC-IV demo using ICD-10 codes
+- Extract and process a mock oncology cohort from MIMIC-III demo using ICD-10 codes
 - Engineer time-series features from labs, vitals, and demographics
 - Train ML models to predict 30-day mortality with SHAP explainability
 - Use LLMs (e.g., GPT-4) to summarize clinical notes for interpretability
@@ -15,11 +15,11 @@ An interactive, AI-driven dashboard for predicting oncology patient outcomes usi
 
 ---
 
-## 🏗️ Project Architecture
+## Project Architecture
 
 ```text
         ┌────────────────────┐
-        │   MIMIC-IV Demo    │
+        │   MIMIC-III Demo    │
         └────────┬───────────┘
                  │
         ┌────────▼──────────┐
@@ -43,9 +43,9 @@ An interactive, AI-driven dashboard for predicting oncology patient outcomes usi
 ```
 ---
 
-## 🧪 Data Source
+## Data Source
 
-- **Dataset**: [MIMIC-IV Demo v2.2](https://physionet.org/content/mimic-iv-demo/2.2/)
+- **Dataset**: [MIMIC-III Demo v2.2](https://physionet.org/content/MIMIC-III-demo/2.2/)
 - **License**: PhysioNet Credentialed Health Data License 1.5.0
 - **Data Tables Used**:
   - `patients`, `admissions` – demographics and mortality labels
@@ -55,21 +55,21 @@ An interactive, AI-driven dashboard for predicting oncology patient outcomes usi
 
 ---
 
-## 📊 Dashboard Features
+## Dashboard Features
 
 | Feature                             | Description |
 |------------------------------------|-------------|
-| 🔍 Patient Lookup                  | Select a mock patient to view clinical data |
-| 🧬 Lab/Vital Trends                | Time-series plots of selected labs (e.g., Hgb, CRP) |
-| 📉 Mortality Risk Prediction       | Model output (e.g., 0.72 risk score) with SHAP explanation |
-| 🧠 GPT-based Note Summarization   | Condensed patient history from ICU notes |
-| 📈 Survival Curves (R)             | Simulated Kaplan-Meier curves (high vs low risk) |
-| 🧰 Model Interpretability          | SHAP beeswarm + top contributing features |
-| 💡 LLM Explanation Layer           | Natural language summary of "why this patient is high-risk" |
+| Patient Lookup                  | Select a mock patient to view clinical data |
+| Lab/Vital Trends                | Time-series plots of selected labs (e.g., Hgb, CRP) |
+| Mortality Risk Prediction       | Model output (e.g., 0.72 risk score) with SHAP explanation |
+| GPT-based Note Summarization   | Condensed patient history from ICU notes |
+| Survival Curves (R)             | Simulated Kaplan-Meier curves (high vs low risk) |
+| Model Interpretability          | SHAP beeswarm + top contributing features |
+| LLM Explanation Layer           | Natural language summary of "why this patient is high-risk" |
 
 ---
 
-## 💻 Tech Stack
+## Tech Stack
 
 | Layer              | Tools & Libraries |
 |-------------------|-------------------|
@@ -82,7 +82,7 @@ An interactive, AI-driven dashboard for predicting oncology patient outcomes usi
 
 ---
 
-## 🧪 Results Snapshot (Demo Mode)
+## Results Snapshot (Demo Mode)
 
 | Task                      | Result |
 |---------------------------|--------|
@@ -93,7 +93,7 @@ An interactive, AI-driven dashboard for predicting oncology patient outcomes usi
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 # Clone repo
@@ -109,7 +109,7 @@ streamlit run streamlit_app/app.py
 ```
 ---
 
-## 🚀 Deployment
+## Deployment
 
 - Streamlit Cloud: streamlit_app/app.py
 - Docker containerization support (optional)
@@ -117,25 +117,25 @@ streamlit run streamlit_app/app.py
 
 ---
 
-## 📌 Limitations
+## Limitations
 
-This project uses the MIMIC-IV demo dataset, which is highly restricted in patient volume and data diversity. While the pipelines and dashboard logic are realistic and reusable, the model outputs and subgroup insights are illustrative only. No clinical inference should be drawn from this prototype.
+This project uses the MIMIC-III demo dataset, which is highly restricted in patient volume and data diversity. While the pipelines and dashboard logic are realistic and reusable, the model outputs and subgroup insights are illustrative only. No clinical inference should be drawn from this prototype.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Pull requests and issue discussions are welcome. Please see CONTRIBUTING.md for guidelines (coming soon).
 
 ---
 
-## 📄 License
+## License
 
 MIT License – see LICENSE file for details.
 
 ---
 
-## ✨ Acknowledgements
+## Acknowledgements
 
 - MIT Lab for Computational Physiology for MIMIC-III
 - HuggingFace & OpenAI for LLM tools

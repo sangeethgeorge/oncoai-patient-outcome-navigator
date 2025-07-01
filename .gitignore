@@ -1,12 +1,54 @@
-# Ignore all raw data
-data/*
+# -----------------------------------------------------------
+# General Project Files and macOS Specifics
+# -----------------------------------------------------------
+.DS_Store                   # macOS specific folder metadata
 
-# Ignore Jupyter and environment junk
+# -----------------------------------------------------------
+# Virtual Environments and Python Specifics
+# -----------------------------------------------------------
+# Byte-code files
 __pycache__/
-.ipynb_checkpoints/
-.DS_Store
+*.pyc
+*.pyo
+*.pyd
+
+# Common virtual environment directories
+env/
+venv/
+.venv/
+
+# Specific virtual environment location if Poetry creates it in 'src'
+src/.venv/
+
+# Poetry's internal cache/data directory
+.poetry/
+
+# Environment variable files (e.g., for local settings)
 .env
 
-# Ignore output formats
+# -----------------------------------------------------------
+# Data Files and Output Artifacts
+# -----------------------------------------------------------
+# Raw and processed data folders
+data/
+cache/                      # General cache directory
+
+# Common database files
+*.sqlite3
+
+# Output data formats (e.g., from processing/analysis)
 *.parquet
 *.csv
+*.csv.gz                    # Compressed CSVs
+
+# -----------------------------------------------------------
+# Jupyter Notebook Specifics
+# -----------------------------------------------------------
+.ipynb_checkpoints/         # Auto-generated Jupyter checkpoints
+*.ipynb-filter              # For jupytext or other notebook-related tools
+
+# -----------------------------------------------------------
+# IDE and Editor Specific Files
+# -----------------------------------------------------------
+.vscode/                    # VS Code settings and files
+.idea/                      # PyCharm project files

@@ -1,0 +1,10 @@
+artifact_location: file:///Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/notebooks/mlruns/763283720860789362/models/m-5019977fc8fa449f83a5dff974ccc224/artifacts
+creation_timestamp: 1751470508116
+experiment_id: '763283720860789362'
+last_updated_timestamp: 1751470509842
+model_id: m-5019977fc8fa449f83a5dff974ccc224
+model_type: null
+name: logreg_model
+source_run_id: ae10757d5eb94eb681115211fb918898
+status: 2
+status_message: null

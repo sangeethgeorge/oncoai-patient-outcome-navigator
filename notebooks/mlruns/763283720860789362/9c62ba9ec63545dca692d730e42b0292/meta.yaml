@@ -1,0 +1,14 @@
+artifact_uri: file:///Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/notebooks/mlruns/763283720860789362/9c62ba9ec63545dca692d730e42b0292/artifacts
+end_time: 1751469597362
+entry_point_name: ''
+experiment_id: '763283720860789362'
+lifecycle_stage: active
+run_id: 9c62ba9ec63545dca692d730e42b0292
+run_name: traveling-wolf-569
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1751469592814
+status: 3
+tags: []
+user_id: sangeethgeorge

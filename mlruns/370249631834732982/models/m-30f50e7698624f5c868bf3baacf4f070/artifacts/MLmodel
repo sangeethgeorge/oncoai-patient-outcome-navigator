@@ -1,0 +1,349 @@
+artifact_path: file:///Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/mlruns/370249631834732982/models/m-30f50e7698624f5c868bf3baacf4f070/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.11.8
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.0
+is_signature_from_type_hint: false
+mlflow_version: 3.1.1
+model_id: m-30f50e7698624f5c868bf3baacf4f070
+model_size_bytes: 107111
+model_uuid: m-30f50e7698624f5c868bf3baacf4f070
+prompts: null
+run_id: 9d58136a3d664f429f686ca7926c475f
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "age", "required": true}, {"type": "double",
+    "name": "mean_heart_rate", "required": true}, {"type": "double", "name": "mean_respiratory_rate",
+    "required": true}, {"type": "double", "name": "min_heart_rate", "required": true},
+    {"type": "double", "name": "min_respiratory_rate", "required": true}, {"type":
+    "double", "name": "max_heart_rate", "required": true}, {"type": "double", "name":
+    "max_respiratory_rate", "required": true}, {"type": "double", "name": "slope_heart_rate",
+    "required": true}, {"type": "double", "name": "slope_respiratory_rate", "required":
+    true}, {"type": "double", "name": "mean_anion_gap", "required": true}, {"type":
+    "double", "name": "mean_bicarbonate", "required": true}, {"type": "double", "name":
+    "mean_calcium,_total", "required": true}, {"type": "double", "name": "mean_chloride",
+    "required": true}, {"type": "double", "name": "mean_creatinine_y", "required":
+    true}, {"type": "double", "name": "mean_glucose", "required": true}, {"type":
+    "double", "name": "mean_hematocrit", "required": true}, {"type": "double", "name":
+    "mean_hemoglobin_y", "required": true}, {"type": "double", "name": "mean_mch",
+    "required": true}, {"type": "double", "name": "mean_mchc", "required": true},
+    {"type": "double", "name": "mean_mcv", "required": true}, {"type": "double", "name":
+    "mean_magnesium_y", "required": true}, {"type": "double", "name": "mean_phosphate",
+    "required": true}, {"type": "double", "name": "mean_platelet_count", "required":
+    true}, {"type": "double", "name": "mean_potassium", "required": true}, {"type":
+    "double", "name": "mean_rdw", "required": true}, {"type": "double", "name": "mean_red_blood_cells",
+    "required": true}, {"type": "double", "name": "mean_sodium", "required": true},
+    {"type": "double", "name": "mean_urea_nitrogen", "required": true}, {"type": "double",
+    "name": "mean_white_blood_cells", "required": true}, {"type": "double", "name":
+    "min_anion_gap", "required": true}, {"type": "double", "name": "min_bicarbonate",
+    "required": true}, {"type": "double", "name": "min_calcium,_total", "required":
+    true}, {"type": "double", "name": "min_chloride", "required": true}, {"type":
+    "double", "name": "min_creatinine_y", "required": true}, {"type": "double", "name":
+    "min_glucose", "required": true}, {"type": "double", "name": "min_hematocrit",
+    "required": true}, {"type": "double", "name": "min_hemoglobin_y", "required":
+    true}, {"type": "double", "name": "min_mch", "required": true}, {"type": "double",
+    "name": "min_mchc", "required": true}, {"type": "double", "name": "min_mcv", "required":
+    true}, {"type": "double", "name": "min_magnesium_y", "required": true}, {"type":
+    "double", "name": "min_phosphate", "required": true}, {"type": "double", "name":
+    "min_platelet_count", "required": true}, {"type": "double", "name": "min_potassium",
+    "required": true}, {"type": "double", "name": "min_rdw", "required": true}, {"type":
+    "double", "name": "min_red_blood_cells", "required": true}, {"type": "double",
+    "name": "min_sodium", "required": true}, {"type": "double", "name": "min_urea_nitrogen",
+    "required": true}, {"type": "double", "name": "min_white_blood_cells", "required":
+    true}, {"type": "double", "name": "max_anion_gap", "required": true}, {"type":
+    "double", "name": "max_bicarbonate", "required": true}, {"type": "double", "name":
+    "max_calcium,_total", "required": true}, {"type": "double", "name": "max_chloride",
+    "required": true}, {"type": "double", "name": "max_creatinine_y", "required":
+    true}, {"type": "double", "name": "max_glucose", "required": true}, {"type": "double",
+    "name": "max_hematocrit", "required": true}, {"type": "double", "name": "max_hemoglobin_y",
+    "required": true}, {"type": "double", "name": "max_mch", "required": true}, {"type":
+    "double", "name": "max_mchc", "required": true}, {"type": "double", "name": "max_mcv",
+    "required": true}, {"type": "double", "name": "max_magnesium_y", "required": true},
+    {"type": "double", "name": "max_phosphate", "required": true}, {"type": "double",
+    "name": "max_platelet_count", "required": true}, {"type": "double", "name": "max_potassium",
+    "required": true}, {"type": "double", "name": "max_rdw", "required": true}, {"type":
+    "double", "name": "max_red_blood_cells", "required": true}, {"type": "double",
+    "name": "max_sodium", "required": true}, {"type": "double", "name": "max_urea_nitrogen",
+    "required": true}, {"type": "double", "name": "max_white_blood_cells", "required":
+    true}, {"type": "double", "name": "slope_anion_gap", "required": true}, {"type":
+    "double", "name": "slope_bicarbonate", "required": true}, {"type": "double", "name":
+    "slope_chloride", "required": true}, {"type": "double", "name": "slope_creatinine_y",
+    "required": true}, {"type": "double", "name": "slope_glucose", "required": true},
+    {"type": "double", "name": "slope_hematocrit", "required": true}, {"type": "double",
+    "name": "slope_hemoglobin_y", "required": true}, {"type": "double", "name": "slope_mch",
+    "required": true}, {"type": "double", "name": "slope_mchc", "required": true},
+    {"type": "double", "name": "slope_mcv", "required": true}, {"type": "double",
+    "name": "slope_platelet_count", "required": true}, {"type": "double", "name":
+    "slope_potassium", "required": true}, {"type": "double", "name": "slope_rdw",
+    "required": true}, {"type": "double", "name": "slope_red_blood_cells", "required":
+    true}, {"type": "double", "name": "slope_sodium", "required": true}, {"type":
+    "double", "name": "slope_urea_nitrogen", "required": true}, {"type": "double",
+    "name": "slope_white_blood_cells", "required": true}, {"type": "boolean", "name":
+    "short_title_Ben neo liver/bile ducts", "required": true}, {"type": "boolean",
+    "name": "short_title_Ben neo peritoneum", "required": true}, {"type": "boolean",
+    "name": "short_title_Ben neo spinal meninges", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neo cranial nerve", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neo larynx", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neo parathyroid", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neo pituitary", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neo skin arm", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neo skin face NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neo skin trunk", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neopl rectum/anus", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neoplasm adrenal", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neoplasm brain", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neoplasm heart", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neoplasm kidney", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neoplasm lg bowel", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neoplasm ovary", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neoplasm pancreas", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neoplasm sm bowel", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neoplasm stomach", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neoplasm thymus", "required": true}, {"type": "boolean",
+    "name": "short_title_Benign neoplasm thyroid", "required": true}, {"type": "boolean",
+    "name": "short_title_Bone/skin neoplasm NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Brain neoplasm NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Digestive neoplasm NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Endocrine/nerv neo NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Lymphomas NEC abdom", "required": true}, {"type": "boolean",
+    "name": "short_title_Lymphomas NEC head", "required": true}, {"type": "boolean",
+    "name": "short_title_Lymphomas NEC mult", "required": true}, {"type": "boolean",
+    "name": "short_title_Lymphomas NEC thorax", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal carcinoid bronc/lung", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal crcnd prim site unkn", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal melanom face NEC/NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal melanoma scalp/neck", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo GI tract ill-def", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo access sinus NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo adnexa NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo ampulla of vater", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo ant floor mouth", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo bladder neck", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo bladder-anterior", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo bladder-dome", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo bladder-lateral", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo bladder-post", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo brain stem", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo breast low-outer", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo breast up-outer", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo bronch/lung NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo bronch/lung NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo carotid body", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo cereb ventricle", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo cervix uteri NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo cranial nerves", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo descend colon", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo esophagus NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo esophagus NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo extrahepat ducts", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo fallopian tube", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo gi/intra-abd NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo head/face/neck", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo hepatic flexure", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo intrahepat ducts", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo islet langerhans", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo liver, primary", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo long bones leg", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo lower 3rd esoph", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo lower lobe lung", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo lymph intra-abd", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo lymph node NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo lymph node-mult", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo lymph-axilla/arm", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo lymph-head/neck", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo lymph-inguin/leg", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo lymph-intrapelv", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo lymph-intrathor", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo mediastinum NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo mediastinum NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo middle 3rd esoph", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo middle lobe lung", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo nasopharynx NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo nasopharynx NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo occipital lobe", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo oropharynx NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo pancreas body", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo pancreas head", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo pancreas tail", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo pancreatic duct", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo parietal lobe", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo peritoneum NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo peritoneum NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo pharynx NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo post nasopharynx", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo pyloric antrum", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo pyriform sinus", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo rectosigmoid jct", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo rectum/anus NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo retroperitoneum", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo ribs/stern/clav", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo sigmoid colon", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo skull/face bone", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo small bowel NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo soft tis abdomen", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo soft tis pelvis", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo soft tis thorax", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo soft tissue arm", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo soft tissue head", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo soft tissue leg", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo spinal cord", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo stomach body", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo stomach cardia", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo temporal lobe", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo thoracic esophag", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo tongue base", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo transverse colon", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo upper lobe lung", "required": true}, {"type": "boolean",
+    "name": "short_title_Mal neo upper vermilion", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig carcinoid ileum", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig carcinoid oth site", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig carcinoid rectum", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig melanoma arm", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig melanoma trunk", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo abdomen", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo ascend colon", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo biliary NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo bladder NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo bladder NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo brain NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo brain NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo cervix NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo corpus uteri", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo frontal lobe", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo gallbladder", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo main bronchus", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo oropharynx NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo pancreas NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo pancreas NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo parotid", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo renal pelvis", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo site NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo soft palate", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo subglottis", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo supraglottis", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo testis NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo tongue NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neo tongue NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neopl kidney", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neopl pleura NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neopl pleura NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neopl stomach NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neopl stomach NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neopl uterus NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malig neoplasm mouth NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malign neopl breast NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malign neopl breast NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malign neopl cerebrum", "required": true}, {"type": "boolean",
+    "name": "short_title_Malign neopl ovary", "required": true}, {"type": "boolean",
+    "name": "short_title_Malign neopl prostate", "required": true}, {"type": "boolean",
+    "name": "short_title_Malign neopl thyroid", "required": true}, {"type": "boolean",
+    "name": "short_title_Malign neopl ureter", "required": true}, {"type": "boolean",
+    "name": "short_title_Malign neopl vulva NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neo anus NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neo appendix", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neo colon NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neo colon NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neo larynx NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neo liver NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neo trachea", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neopl duodenum", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neopl rectum", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neopl tonsil", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neoplasm NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Malignant neoplasm cecum", "required": true}, {"type": "boolean",
+    "name": "short_title_Neoplasm other sites NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Oth imno npl wo ach rmsn", "required": true}, {"type": "boolean",
+    "name": "short_title_Oth lymp unsp xtrndl org", "required": true}, {"type": "boolean",
+    "name": "short_title_Other gu neoplasm NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Plasmacytoma NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Respiratory neoplasm NOS", "required": true}, {"type": "boolean",
+    "name": "short_title_Sec mal neo GI NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Sec mal neo brain/spine", "required": true}, {"type": "boolean",
+    "name": "short_title_Sec mal neo mediastinum", "required": true}, {"type": "boolean",
+    "name": "short_title_Sec mal neo peritoneum", "required": true}, {"type": "boolean",
+    "name": "short_title_Sec malig neo lg bowel", "required": true}, {"type": "boolean",
+    "name": "short_title_Sec malig neo nerve NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Sec malig neo resp NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Sec malig neo sm bowel", "required": true}, {"type": "boolean",
+    "name": "short_title_Sec malig neo urin NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Second malig neo adrenal", "required": true}, {"type": "boolean",
+    "name": "short_title_Second malig neo breast", "required": true}, {"type": "boolean",
+    "name": "short_title_Second malig neo genital", "required": true}, {"type": "boolean",
+    "name": "short_title_Second malig neo kidney", "required": true}, {"type": "boolean",
+    "name": "short_title_Second malig neo liver", "required": true}, {"type": "boolean",
+    "name": "short_title_Second malig neo ovary", "required": true}, {"type": "boolean",
+    "name": "short_title_Second malig neo pleura", "required": true}, {"type": "boolean",
+    "name": "short_title_Secondary malig neo NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Secondary malig neo bone", "required": true}, {"type": "boolean",
+    "name": "short_title_Secondary malig neo lung", "required": true}, {"type": "boolean",
+    "name": "short_title_Secondary malig neo skin", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc beh neo brain/spinal", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo GI NEC", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo bladder", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo bone", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo intestine", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo kidney", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo larynx", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo liver", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo lung", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo meninges", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo paragang", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo pituitary", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo skin", "required": true}, {"type": "boolean",
+    "name": "short_title_Unc behav neo soft tissu", "required": true}, {"type": "boolean",
+    "name": "gender_M", "required": true}, {"type": "boolean", "name": "ethnicity_AMERICAN
+    INDIAN/ALASKA NATIVE FEDERALLY RECOGNIZED TRIBE", "required": true}, {"type":
+    "boolean", "name": "ethnicity_ASIAN", "required": true}, {"type": "boolean", "name":
+    "ethnicity_ASIAN - ASIAN INDIAN", "required": true}, {"type": "boolean", "name":
+    "ethnicity_ASIAN - CHINESE", "required": true}, {"type": "boolean", "name": "ethnicity_ASIAN
+    - FILIPINO", "required": true}, {"type": "boolean", "name": "ethnicity_ASIAN -
+    KOREAN", "required": true}, {"type": "boolean", "name": "ethnicity_ASIAN - VIETNAMESE",
+    "required": true}, {"type": "boolean", "name": "ethnicity_BLACK/AFRICAN AMERICAN",
+    "required": true}, {"type": "boolean", "name": "ethnicity_BLACK/CAPE VERDEAN",
+    "required": true}, {"type": "boolean", "name": "ethnicity_BLACK/HAITIAN", "required":
+    true}, {"type": "boolean", "name": "ethnicity_HISPANIC OR LATINO", "required":
+    true}, {"type": "boolean", "name": "ethnicity_HISPANIC/LATINO - CUBAN", "required":
+    true}, {"type": "boolean", "name": "ethnicity_HISPANIC/LATINO - DOMINICAN", "required":
+    true}, {"type": "boolean", "name": "ethnicity_HISPANIC/LATINO - GUATEMALAN", "required":
+    true}, {"type": "boolean", "name": "ethnicity_HISPANIC/LATINO - PUERTO RICAN",
+    "required": true}, {"type": "boolean", "name": "ethnicity_MIDDLE EASTERN", "required":
+    true}, {"type": "boolean", "name": "ethnicity_MULTI RACE ETHNICITY", "required":
+    true}, {"type": "boolean", "name": "ethnicity_NATIVE HAWAIIAN OR OTHER PACIFIC
+    ISLANDER", "required": true}, {"type": "boolean", "name": "ethnicity_OTHER", "required":
+    true}, {"type": "boolean", "name": "ethnicity_PATIENT DECLINED TO ANSWER", "required":
+    true}, {"type": "boolean", "name": "ethnicity_PORTUGUESE", "required": true},
+    {"type": "boolean", "name": "ethnicity_UNABLE TO OBTAIN", "required": true}, {"type":
+    "boolean", "name": "ethnicity_UNKNOWN/NOT SPECIFIED", "required": true}, {"type":
+    "boolean", "name": "ethnicity_WHITE", "required": true}, {"type": "boolean", "name":
+    "ethnicity_WHITE - BRAZILIAN", "required": true}, {"type": "boolean", "name":
+    "ethnicity_WHITE - EASTERN EUROPEAN", "required": true}, {"type": "boolean", "name":
+    "ethnicity_WHITE - OTHER EUROPEAN", "required": true}, {"type": "boolean", "name":
+    "ethnicity_WHITE - RUSSIAN", "required": true}, {"type": "boolean", "name": "marital_status_LIFE
+    PARTNER", "required": true}, {"type": "boolean", "name": "marital_status_MARRIED",
+    "required": true}, {"type": "boolean", "name": "marital_status_SEPARATED", "required":
+    true}, {"type": "boolean", "name": "marital_status_SINGLE", "required": true},
+    {"type": "boolean", "name": "marital_status_UNKNOWN (DEFAULT)", "required": true},
+    {"type": "boolean", "name": "marital_status_WIDOWED", "required": true}, {"type":
+    "boolean", "name": "insurance_Medicaid", "required": true}, {"type": "boolean",
+    "name": "insurance_Medicare", "required": true}, {"type": "boolean", "name": "insurance_Private",
+    "required": true}, {"type": "boolean", "name": "insurance_Self Pay", "required":
+    true}, {"type": "boolean", "name": "admission_type_EMERGENCY", "required": true},
+    {"type": "boolean", "name": "admission_type_URGENT", "required": true}]'
+  outputs: '[{"type": "integer", "required": true}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2025-07-02 12:18:25.975625'

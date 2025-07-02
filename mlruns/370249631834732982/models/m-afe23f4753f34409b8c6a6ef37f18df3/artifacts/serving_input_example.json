@@ -1,0 +1,42 @@
+{
+  "dataframe_split": {
+    "columns": [
+      "feature_A",
+      "feature_B",
+      "categorical_C_Y",
+      "categorical_C_Z"
+    ],
+    "data": [
+      [
+        0.62828917785123,
+        5,
+        false,
+        false
+      ],
+      [
+        0.09649152270636674,
+        6,
+        true,
+        false
+      ],
+      [
+        0.9470935939407692,
+        0,
+        true,
+        false
+      ],
+      [
+        0.5394039084355594,
+        7,
+        true,
+        false
+      ],
+      [
+        0.9437963672783697,
+        5,
+        false,
+        false
+      ]
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+artifact_location: file:///Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/mlruns/370249631834732982/models/m-3612404405b0445989d7caa971ebd3af/artifacts
+creation_timestamp: 1752095353852
+experiment_id: '370249631834732982'
+last_updated_timestamp: 1752095355135
+model_id: m-3612404405b0445989d7caa971ebd3af
+model_type: null
+name: OncoAIScaler
+source_run_id: 2c906ac25fcd42a3bf34d4c788a3f723
+status: 2
+status_message: null

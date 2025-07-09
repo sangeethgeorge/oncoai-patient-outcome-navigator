@@ -1,0 +1,14 @@
+artifact_uri: file:///Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/mlruns/370249631834732982/a6729f80dc2c40d7a12f21a9e5bc5b1c/artifacts
+end_time: 1752094108303
+entry_point_name: ''
+experiment_id: '370249631834732982'
+lifecycle_stage: active
+run_id: a6729f80dc2c40d7a12f21a9e5bc5b1c
+run_name: inference_20250709_164828
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1752094108164
+status: 4
+tags: []
+user_id: sangeethgeorge

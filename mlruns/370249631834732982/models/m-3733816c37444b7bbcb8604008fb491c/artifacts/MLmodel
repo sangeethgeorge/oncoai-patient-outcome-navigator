@@ -1,0 +1,42 @@
+artifact_path: file:///Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/mlruns/370249631834732982/models/m-3733816c37444b7bbcb8604008fb491c/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.11.8
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.0
+is_signature_from_type_hint: false
+mlflow_version: 3.1.1
+model_id: m-3733816c37444b7bbcb8604008fb491c
+model_size_bytes: 4995
+model_uuid: m-3733816c37444b7bbcb8604008fb491c
+prompts: null
+run_id: f1290211ffef4a25829f05c3c14e6d7f
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "subject_id", "required": true}, {"type": "double",
+    "name": "hadm_id", "required": true}, {"type": "double", "name": "icustay_id",
+    "required": true}, {"type": "double", "name": "mean_mchc", "required": true},
+    {"type": "double", "name": "slope_bicarbonate", "required": true}, {"type": "double",
+    "name": "min_heart_rate", "required": true}, {"type": "double", "name": "max_bicarbonate",
+    "required": true}, {"type": "double", "name": "mean_chloride", "required": true},
+    {"type": "double", "name": "min_white_blood_cells", "required": true}, {"type":
+    "double", "name": "mean_urea_nitrogen", "required": true}, {"type": "double",
+    "name": "mean_rdw", "required": true}, {"type": "double", "name": "min_urea_nitrogen",
+    "required": true}, {"type": "double", "name": "max_heart_rate", "required": true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "int32", "shape": [-1]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2025-07-09 21:06:08.090625'

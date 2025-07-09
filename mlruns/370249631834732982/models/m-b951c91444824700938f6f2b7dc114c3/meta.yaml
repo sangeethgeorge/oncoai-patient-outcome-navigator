@@ -1,0 +1,10 @@
+artifact_location: file:///Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/mlruns/370249631834732982/models/m-b951c91444824700938f6f2b7dc114c3/artifacts
+creation_timestamp: 1752093586282
+experiment_id: '370249631834732982'
+last_updated_timestamp: 1752093587877
+model_id: m-b951c91444824700938f6f2b7dc114c3
+model_type: null
+name: OncoAICancerMortalityPredictor
+source_run_id: cef233e39a8d487dafb39eaff7f999eb
+status: 2
+status_message: null

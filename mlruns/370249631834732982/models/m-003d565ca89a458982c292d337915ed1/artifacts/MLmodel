@@ -1,0 +1,14 @@
+artifact_path: file:///Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/mlruns/370249631834732982/models/m-003d565ca89a458982c292d337915ed1/artifacts
+flavors:
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.0
+mlflow_version: 3.1.1
+model_id: m-003d565ca89a458982c292d337915ed1
+model_size_bytes: 1061
+model_uuid: m-003d565ca89a458982c292d337915ed1
+prompts: null
+run_id: 5c7c6275c7224d8b93136df832207f31
+utc_time_created: '2025-07-09 20:04:21.324416'

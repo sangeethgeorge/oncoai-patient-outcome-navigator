@@ -1,0 +1,44 @@
+artifact_path: file:///Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/mlruns/189006757495382236/models/m-7c109460a4674e58bca9d5e255845636/artifacts
+flavors:
+  python_function:
+    cloudpickle_version: 3.1.1
+    code: null
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pyfunc.model
+    python_model: python_model.pkl
+    python_version: 3.11.8
+    streamable: false
+is_signature_from_type_hint: false
+mlflow_version: 3.1.1
+model_id: m-7c109460a4674e58bca9d5e255845636
+model_size_bytes: 5317
+model_uuid: m-7c109460a4674e58bca9d5e255845636
+prompts: null
+run_id: 1944a6e3094e45d5bbc5df150539b019
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "mean_mchc", "required": true}, {"type": "double",
+    "name": "min_heart_rate", "required": true}, {"type": "double", "name": "mean_chloride",
+    "required": true}, {"type": "double", "name": "slope_bicarbonate", "required":
+    true}, {"type": "double", "name": "mean_urea_nitrogen", "required": true}, {"type":
+    "double", "name": "min_white_blood_cells", "required": true}, {"type": "double",
+    "name": "mean_rdw", "required": true}, {"type": "double", "name": "max_bicarbonate",
+    "required": true}, {"type": "double", "name": "mean_glucose", "required": true},
+    {"type": "double", "name": "slope_chloride", "required": true}]'
+  outputs: '[{"type": "double", "name": "mean_mchc", "required": true}, {"type": "double",
+    "name": "min_heart_rate", "required": true}, {"type": "double", "name": "mean_chloride",
+    "required": true}, {"type": "double", "name": "slope_bicarbonate", "required":
+    true}, {"type": "double", "name": "mean_urea_nitrogen", "required": true}, {"type":
+    "double", "name": "min_white_blood_cells", "required": true}, {"type": "double",
+    "name": "mean_rdw", "required": true}, {"type": "double", "name": "max_bicarbonate",
+    "required": true}, {"type": "double", "name": "mean_glucose", "required": true},
+    {"type": "double", "name": "slope_chloride", "required": true}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2025-07-11 21:03:07.743483'

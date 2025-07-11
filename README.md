@@ -124,7 +124,7 @@ streamlit run streamlit_app/onco_dashboard.py
 ```
 ---
 
-☁️ Deployment
+## ☁️ Deployment
 ✅ Prototype runs locally with streamlit run
 
 🧪 Docker containerization in progress
@@ -133,7 +133,7 @@ streamlit run streamlit_app/onco_dashboard.py
 
 ---
 
-⚠️ Limitations
+## ⚠️ Limitations
 Based on MIMIC-III demo, not real patient data
 
 All predictions, summaries, and visuals are illustrative only
@@ -142,10 +142,10 @@ Do not use for clinical inference or decision-making
 
 ---
 
-📜 License
+## 📜 License
 MIT License – see LICENSE
 
-🙏 Acknowledgements
+## 🙏 Acknowledgements
 MIT Lab for Computational Physiology (MIMIC-III)
 
 scikit-learn, SHAP, spaCy, Streamlit

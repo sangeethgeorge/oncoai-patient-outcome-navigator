@@ -118,7 +118,7 @@ streamlit run streamlit_app/onco_dashboard.py
 
 🧪 Docker containerization in progress
 
-🧪 Streamlit Cloud deployment planned (Week 6)
+🧪 Streamlit Cloud deployment planned (near future)
 
 ---
 

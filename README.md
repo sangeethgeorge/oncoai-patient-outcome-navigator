@@ -85,17 +85,6 @@ OncoAI is a modular research prototype that explores how early ICU data in oncol
 
 ---
 
-## 🧪 Sample Results
-
-| Metric                    | Value / Description                                      |
-| :------------------------ | :------------------------------------------------------- |
-| Oncology Patients         | 5 mock patients with cancer ICDs                         |
-| AUC (LogReg, simulated)   | ~0.70                                                    |
-| SHAP Top Drivers          | ↑ CRP, ↓ MAP, ↓ Hgb                                      |
-| GPT-4 ICU Summary (example) | “This patient had progressive anemia, rising CRP, and hypotension prior to death.” |
-
----
-
 ## ⚙️ Tech Stack
 
 | Layer    | Stack                                   |

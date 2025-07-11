@@ -1,54 +1,66 @@
 # -----------------------------------------------------------
-# General Project Files and macOS Specifics
+# macOS & System
 # -----------------------------------------------------------
-.DS_Store                   # macOS specific folder metadata
+.DS_Store
 
 # -----------------------------------------------------------
-# Virtual Environments and Python Specifics
+# Python
 # -----------------------------------------------------------
-# Byte-code files
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 *.pyd
+*.pyo
 
-# Common virtual environment directories
+# -----------------------------------------------------------
+# Poetry & Environments
+# -----------------------------------------------------------
+.env
+.venv/
 env/
 venv/
-.venv/
-
-# Specific virtual environment location if Poetry creates it in 'src'
 src/.venv/
-
-# Poetry's internal cache/data directory
 .poetry/
 
-# Environment variable files (e.g., for local settings)
-.env
+# -----------------------------------------------------------
+# Jupyter Notebooks
+# -----------------------------------------------------------
+.ipynb_checkpoints/
 
 # -----------------------------------------------------------
-# Data Files and Output Artifacts
+# IDEs & Editors
 # -----------------------------------------------------------
-# Raw and processed data folders
-data/
-cache/                      # General cache directory
+.vscode/
+.idea/
 
-# Common database files
-*.sqlite3
+# -----------------------------------------------------------
+# Data & Artifacts
+# -----------------------------------------------------------
+# Ignore all raw/processed data but keep README.md
+data/raw/*
+!data/raw/README.md
+data/processed/*
+!data/processed/README.md
+data/external/*
+!data/external/README.md
 
-# Output data formats (e.g., from processing/analysis)
+# Specific patterns
 *.parquet
 *.csv
-*.csv.gz                    # Compressed CSVs
+*.csv.gz
+*.sqlite3
 
 # -----------------------------------------------------------
-# Jupyter Notebook Specifics
+# MLflow Local Tracking
 # -----------------------------------------------------------
-.ipynb_checkpoints/         # Auto-generated Jupyter checkpoints
-*.ipynb-filter              # For jupytext or other notebook-related tools
+mlruns/
 
 # -----------------------------------------------------------
-# IDE and Editor Specific Files
+# Reports & Outputs
 # -----------------------------------------------------------
-.vscode/                    # VS Code settings and files
-.idea/                      # PyCharm project files
+reports/shap_plots/*
+!reports/shap_plots/README.md
+
+# -----------------------------------------------------------
+# Miscellaneous
+# -----------------------------------------------------------
+cache/

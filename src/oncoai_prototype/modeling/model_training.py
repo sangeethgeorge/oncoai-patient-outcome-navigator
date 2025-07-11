@@ -1,24 +1,17 @@
-# src/oncoai_prototype/modeling/model_training.py
-
 import os
 import time
 from datetime import datetime
 from typing import Any
-import tempfile
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, classification_report
-
+import shutil
 import mlflow
-import mlflow.sklearn
 import mlflow.pyfunc
-from mlflow.pyfunc import PythonModel
-from mlflow.models import infer_signature, ModelSignature, validate_serving_input
-from mlflow.models.utils import convert_input_example_to_serving_input
+from mlflow.models import ModelSignature
 from mlflow.types.schema import Schema, ColSpec, DataType
 from mlflow.types.utils import _infer_schema
-from mlflow.tracking import MlflowClient
 
 # --- Custom utility imports ---
 from oncoai_prototype.utils.io_utils import load_dataset
@@ -29,10 +22,8 @@ from oncoai_prototype.utils.leakage import check_for_leakage
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 DATA_PATH = os.path.join(PROJECT_ROOT, "data", "processed", "onco_features_cleaned.parquet")
 
-
 # --- MLflow PyFunc Model Wrappers ---
-
-class SklearnWrapper(PythonModel):
+class SklearnWrapper(mlflow.pyfunc.PythonModel):
     def __init__(self, model):
         self.model = model
 
@@ -44,7 +35,7 @@ class SklearnWrapper(PythonModel):
             "predicted_probability": probs
         })
 
-class ScalerWrapper(PythonModel):
+class ScalerWrapper(mlflow.pyfunc.PythonModel):
     def __init__(self, scaler):
         self.scaler = scaler
 
@@ -101,7 +92,7 @@ def run_training_pipeline():
 # --- Main Execution ---
 if __name__ == "__main__":
     mlflow.set_experiment("OncoAI-Mortality-Prediction")
-    with mlflow.start_run(run_name=f"logreg_training_{datetime.now().strftime('%Y%m%d_%H%M%S')}") as run:
+    with mlflow.start_run(run_name=f"logreg_training_{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
         result = run_training_pipeline()
         if result is None:
             print("Training aborted.")
@@ -114,54 +105,40 @@ if __name__ == "__main__":
         mlflow.log_param("scaler", "StandardScaler")
         mlflow.log_metric("roc_auc", auc)
 
-        # Save feature names to a temporary file and log it as an artifact
-        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as tmp_file:
-            for col in X_train_orig.columns:
-                tmp_file.write(f"{col}\n")
-            tmp_file.flush()
+        # Save feature names
+        feature_names = X_train_orig.columns.tolist()
+        model_artifact_dir = os.path.join(PROJECT_ROOT, "tmp_onco_model_artifacts")
+        os.makedirs(model_artifact_dir, exist_ok=True)
 
-        # Log the artifact to the "features" directory in the default artifact location
-        mlflow.log_artifact(tmp_file.name, artifact_path="features")
+        features_txt_path = os.path.join(model_artifact_dir, "feature_names.txt")
+        with open(features_txt_path, "w") as f:
+            for col in feature_names:
+                f.write(f"{col}\n")
 
-        # Optionally print the artifact URI
-        artifact_uri = mlflow.get_artifact_uri(artifact_path="features/" + os.path.basename(tmp_file.name))
-        print(f"Artifact saved to: {artifact_uri}")
+        # Log feature_names.txt as general run artifact (optional)
+        mlflow.log_artifact(features_txt_path, artifact_path="features")
+        print(f"📁 Feature names logged to: {mlflow.get_artifact_uri('features/feature_names.txt')}")
 
-        # Define model signature
-        input_schema = Schema([ColSpec(type=DataType.double, name=col) for col in X_train_scaled_df.columns])
-        output_schema = Schema([ColSpec(type=DataType.long)])
+        # Log classifier model as PyFunc with embedded artifact
+        input_schema = Schema([ColSpec(DataType.double, col) for col in X_train_scaled_df.columns])
+        output_schema = Schema([
+            ColSpec(DataType.long, "predicted_mortality_30d"),
+            ColSpec(DataType.double, "predicted_probability")
+        ])
         model_signature = ModelSignature(inputs=input_schema, outputs=output_schema)
 
-        # Log PyFunc model
-        logged_model_info = mlflow.sklearn.log_model(
-            sk_model=model,
-            name="onco_model_sklearn",
+        wrapped_model = SklearnWrapper(model)
+        mlflow.pyfunc.log_model(
+            artifact_path="onco_model",
+            python_model=wrapped_model,
             signature=model_signature,
-            input_example=X_train_scaled_df.iloc[:5].copy()
+            input_example=X_train_scaled_df.iloc[:5],
+            artifacts={"feature_names": features_txt_path},  # ✅ Embed inside model
+            registered_model_name="OncoAICancerMortalityPredictor"
         )
 
-        # Register model
-        run_id = mlflow.active_run().info.run_id
-        model_uri = f"runs:/{run_id}/onco_model_sklearn"
-        registered_model = mlflow.register_model(model_uri=model_uri, name="OncoAICancerMortalityPredictor")
-
-        # Wait for model registration to complete
-        client = MlflowClient()
-        for _ in range(10):
-            mv = client.get_model_version("OncoAICancerMortalityPredictor", registered_model.version)
-            if mv.status == "READY":
-                break
-            time.sleep(1)
-
-        # Validate serving input
-        serving_input = convert_input_example_to_serving_input(X_train_scaled_df.iloc[:5].copy())
-        validate_serving_input(
-            model_uri=f"models:/OncoAICancerMortalityPredictor/{registered_model.version}",
-            serving_input=serving_input
-        )
-
-        # Log and register scaler as PyFunc
-        scaler_input_example = X_train_orig.iloc[:5].copy()
+        # Log scaler as PyFunc
+        scaler_input_example = X_train_orig.iloc[:5]
         scaler_output_df = pd.DataFrame(scaler.transform(scaler_input_example), columns=X_train_orig.columns)
         scaler_signature = ModelSignature(
             inputs=_infer_schema(scaler_input_example),
@@ -169,21 +146,15 @@ if __name__ == "__main__":
         )
 
         wrapped_scaler = ScalerWrapper(scaler)
-        scaler_logged_model_info = mlflow.pyfunc.log_model(
-            name="onco_scaler",
+        mlflow.pyfunc.log_model(
+            artifact_path="onco_scaler_model",
             python_model=wrapped_scaler,
             signature=scaler_signature,
-            input_example=scaler_input_example
+            input_example=scaler_input_example,
+            registered_model_name="onco_scaler"
         )
 
-        scaler_uri = scaler_logged_model_info.model_uri
-        registered_scaler = mlflow.register_model(model_uri=scaler_uri, name="onco_scaler")
+        # Optional: Clean up local artifacts directory
+        shutil.rmtree(model_artifact_dir, ignore_errors=True)
 
-        # Wait for scaler registration to complete
-        for _ in range(10):
-            mv = client.get_model_version("onco_scaler", registered_scaler.version)
-            if mv.status == "READY":
-                break
-            time.sleep(1)
-
-        print("Training run and model registration complete.")
+        print("✅ Training run and model registration complete.")

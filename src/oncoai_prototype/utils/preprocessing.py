@@ -25,5 +25,5 @@ def scale_features(X_train: pd.DataFrame, X_test: pd.DataFrame):
     return X_train_scaled, X_test_scaled, scaler
 
 def preprocess_for_inference(df: pd.DataFrame):
-    df = df.drop(columns=["subject_id", "hadm_id", "icustay_id"], errors="ignore")
+    df = df.drop(columns=['icustay_id', 'subject_id', 'hadm_id', 'admittime', 'dob', 'dod', 'intime', 'outtime', 'icd9_code'], errors="ignore")
     return df.fillna(df.median(numeric_only=True))

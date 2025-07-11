@@ -1,0 +1,40 @@
+artifact_path: file:///Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/mlruns/242721588666454514/models/m-8e8b48c0ed484be7954ee37bdd98aeb2/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.11.8
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.0
+is_signature_from_type_hint: false
+mlflow_version: 3.1.1
+model_id: m-8e8b48c0ed484be7954ee37bdd98aeb2
+model_size_bytes: 4090
+model_uuid: m-8e8b48c0ed484be7954ee37bdd98aeb2
+prompts: null
+run_id: 476745276686455f852d15725748b6ea
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "mean_mchc", "required": true}, {"type": "double",
+    "name": "min_heart_rate", "required": true}, {"type": "double", "name": "mean_chloride",
+    "required": true}, {"type": "double", "name": "slope_bicarbonate", "required":
+    true}, {"type": "double", "name": "mean_urea_nitrogen", "required": true}, {"type":
+    "double", "name": "min_white_blood_cells", "required": true}, {"type": "double",
+    "name": "mean_rdw", "required": true}, {"type": "double", "name": "max_bicarbonate",
+    "required": true}, {"type": "double", "name": "mean_glucose", "required": true},
+    {"type": "double", "name": "slope_chloride", "required": true}]'
+  outputs: '[{"type": "long", "required": true}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2025-07-11 17:51:20.475997'

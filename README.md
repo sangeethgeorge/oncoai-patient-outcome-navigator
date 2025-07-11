@@ -1,150 +1,153 @@
 # OncoAI Patient Outcome Navigator
 
-**AI-driven clinical dashboard for predicting 30-day mortality in oncology ICU patients using MIMIC-III data**
-
-![Python](https://img.shields.io/badge/Python-3.9+-blue.svg) ![Streamlit](https://img.shields.io/badge/Streamlit-App-green.svg) ![scikit-learn](https://img.shields.io/badge/sklearn-Model-orange.svg) ![spaCy](https://img.shields.io/badge/NLP-spaCy%20%7C%20GPT4-lightgrey.svg)
+🧠 AI-powered clinical dashboard for 30-day mortality prediction in oncology ICU patients using MIMIC-III demo data
 
 ---
 
-## Overview
+## 🔍 Overview
 
-**OncoAI** is a research prototype that leverages electronic health record (EHR) data to:
+OncoAI is a modular research prototype that explores how early ICU data in oncology patients can be used to:
 
-- Identify oncology ICU cohorts from MIMIC-III/IV using ICD-9/ICD-10 codes
-- Extract labs, vitals, and clinical notes to build structured and unstructured features
-- Train predictive models for 30-day mortality
-- Generate explainability outputs using SHAP
-- Summarize ICU patient notes using NLP + LLMs (spaCy, GPT-4)
-- Visualize patient-level insights in an interactive **Streamlit dashboard**
+* Define an oncology cohort using ICD-9/10 codes in MIMIC-III demo
+* Engineer time-series features from labs and vitals
+* Train a 30-day mortality classifier with interpretability via SHAP
+* Use NLP and LLMs (spaCy, GPT-4) to summarize ICU notes
+* Visualize patient-level predictions in an interactive Streamlit dashboard
 
-> For academic/research use only — built using the MIMIC demo dataset.
+⚠️ **For academic/demo use only** — all results are simulated using limited MIMIC-III demo data.
 
 ---
+
+## 🧱 Project Architecture
 
 ## Project Architecture
 
 ```text
         ┌────────────────────┐
-        │   MIMIC-III Demo    │
+        │   MIMIC-III Demo   │
         └────────┬───────────┘
                  │
         ┌────────▼──────────┐
-        │  SQL + Pandas ETL │◄─────────────┐
-        └────────┬──────────┘              │
-        ┌────────▼────────────┐     ┌──────▼───────┐
-        │ Feature Engineering │◄───▶│ Clinical NLP │
-        └────────┬────────────┘     └──────┬───────┘
-                 │                         │
-        ┌────────▼──────────┐      ┌───────▼────────┐
-        │   ML Modeling     │      │  GPT Summary   │
-        └────────┬──────────┘      └───────┬────────┘
-                 │                         │
-        ┌────────▼──────────────┐          │
-        │  R Survival Modeling  │◄─────────┘
-        └────────┬──────────────┘
+        │  SQL + Pandas ETL │
+        └────────┬──────────┘
+        ┌────────▼────────────┐     ┌──────────────────────┐
+        │ Feature Engineering │◄───▶│ NLP/LLM Note Summary │
+        └────────┬────────────┘     └──────────────────────┘
+                 │
+        ┌────────▼────────────┐
+        │ Mortality Classifier│
+        │ + SHAP Explanations │
+        └────────┬────────────┘
                  │
         ┌────────▼────────────┐
         │ Streamlit Dashboard │
         └─────────────────────┘
+
 ```
 ---
 
-## Data Source
 
-- **Dataset**: [MIMIC-III Demo v2.2](https://physionet.org/content/MIMIC-III-demo/2.2/)
-- **License**: PhysioNet Credentialed Health Data License 1.5.0
-- **Data Tables Used**:
-  - `patients`, `admissions` – demographics and mortality labels
-  - `diagnoses_icd` – oncology cohort extraction
-  - `labevents`, `chartevents` – vitals and lab values
-  - `noteevents` – free-text clinical notes (ICU)
+## 📊 Project Progress (as of July 2025)
 
----
-
-## Dashboard Features
-
-| Feature                             | Description |
-|------------------------------------|-------------|
-| Patient Lookup                  | Select a mock patient to view clinical data |
-| Lab/Vital Trends                | Time-series plots of selected labs (e.g., Hgb, CRP) |
-| Mortality Risk Prediction       | Model output (e.g., 0.72 risk score) with SHAP explanation |
-| GPT-based Note Summarization   | Condensed patient history from ICU notes |
-| Survival Curves (R)             | Simulated Kaplan-Meier curves (high vs low risk) |
-| Model Interpretability          | SHAP beeswarm + top contributing features |
-| LLM Explanation Layer           | Natural language summary of "why this patient is high-risk" |
+| Module                 | Status        | Notes                                          |
+| :--------------------- | :------------ | :--------------------------------------------- |
+| Cohort Definition      | ✅ Complete   | Oncology cohort from diagnoses_icd             |
+| ETL + Preprocessing    | ✅ Complete   | Modular utilities for lab/vital cleaning       |
+| Feature Engineering    | ✅ Complete   | Aggregates + trends (e.g., CRP mean, MAP min)  |
+| Modeling               | ✅ Complete   | Logistic regression with SHAP and MLflow logging |
+| SHAP Integration       | ✅ Complete   | `shap_utils.py` includes beeswarm, waterfall plots |
+| Streamlit App          | ✅ Prototype Live | `onco_dashboard.py` serves patient risk view |
+| NLP Module             | 🧪 In Progress | spaCy & GPT-4 tested for sample summaries      |
+| R Survival Analysis    | 🧪 Simulated  | Kaplan-Meier example with dummy risk groups    |
+| Docker/Cloud Deploy    | ⚙️ Planned    | Next phase (Week 6)                            |
 
 ---
 
-## Tech Stack
+## 📁 Data Source
 
-| Layer              | Tools & Libraries |
-|-------------------|-------------------|
-| **Data**          | PostgreSQL, Pandas, SQLAlchemy |
-| **Modeling**      | Scikit-learn, SHAP |
-| **NLP**           | spaCy, SciSpacy, GPT-4 (OpenAI API) |
-| **Stats (R)**     | survival, survminer |
-| **Frontend**      | Streamlit, Plotly |
-| **Deployment**    | Docker, Streamlit Cloud, GitHub |
+* **Dataset:** MIMIC-III Demo v2.2
+* **Tables:** `patients`, `admissions`, `diagnoses_icd`, `labevents`, `chartevents`, `noteevents`
+* **License:** PhysioNet Credentialed Health Data License 1.5.0
 
 ---
 
-## Results Snapshot (Demo Mode)
+## 📈 Dashboard Features
 
-| Task                      | Result |
-|---------------------------|--------|
-| Oncology cohort           | 5 simulated patients from demo ICD codes |
-| 30-day mortality model    | Logistic regression (AUC ~0.70, simulated) |
-| SHAP insights             | CRP ↑, Hgb ↓, MAP ↓ as top risk drivers |
-| GPT Summary (example)     | “This patient had progressive anemia, rising CRP, and hypotension prior to death.” |
+| Feature                   | Description                                    |
+| :------------------------ | :--------------------------------------------- |
+| Patient Viewer            | Selects a demo patient from cohort             |
+| Lab/Vital Trends          | Time-series plots for CRP, Hgb, MAP, etc.      |
+| 30-day Mortality Prediction | Logistic regression model output               |
+| SHAP Explainability       | Beeswarm and waterfall plots for top risk drivers |
+| NLP Summary (LLM)         | GPT-4 condenses ICU notes (beta)               |
+| Natural Language Rationale | LLM-generated explanation of prediction        |
+| Survival Simulation (R)   | Simulated KM curves for high/low risk          |
 
 ---
 
-## Installation
+## 🧪 Sample Results
+
+| Metric                    | Value / Description                                      |
+| :------------------------ | :------------------------------------------------------- |
+| Oncology Patients         | 5 mock patients with cancer ICDs                         |
+| AUC (LogReg, simulated)   | ~0.70                                                    |
+| SHAP Top Drivers          | ↑ CRP, ↓ MAP, ↓ Hgb                                      |
+| GPT-4 ICU Summary (example) | “This patient had progressive anemia, rising CRP, and hypotension prior to death.” |
+
+---
+
+## ⚙️ Tech Stack
+
+| Layer    | Stack                                   |
+| :------- | :-------------------------------------- |
+| Data     | Pandas, SQLAlchemy, PostgreSQL          |
+| ML       | scikit-learn, SHAP, MLflow              |
+| NLP      | spaCy, scispaCy, OpenAI GPT-4           |
+| Survival | R (survival, survminer)                 |
+| UI       | Streamlit, Plotly                       |
+| DevOps   | Docker (planned), GitHub, Poetry        |
+
+---
+
+## 🚀 Setup Instructions
 
 ```bash
-# Clone repo
-git clone https://github.com/sangeethgeorge/oncoai-patient-outcome-navigator.git
+# 1. Clone the repo
+git clone [https://github.com/sangeethgeorge/oncoai-patient-outcome-navigator.git](https://github.com/sangeethgeorge/oncoai-patient-outcome-navigator.git)
 cd oncoai-patient-outcome-navigator
 
-# Install dependencies
-pip install -r requirements.txt
+# 2. Install Python dependencies
+poetry install  # or pip install -r requirements.txt
 
-# Launch Streamlit app
-streamlit run streamlit_app/app.py
-
+# 3. Run Streamlit app
+streamlit run streamlit_app/onco_dashboard.py
 ```
 ---
 
-## Deployment
+☁️ Deployment
+✅ Prototype runs locally with streamlit run
 
-- Streamlit Cloud: streamlit_app/app.py
-- Docker containerization support (optional)
-- R scripts for survival analysis in /notebooks/
+🧪 Docker containerization in progress
 
----
-
-## Limitations
-
-This project uses the MIMIC-III demo dataset, which is highly restricted in patient volume and data diversity. While the pipelines and dashboard logic are realistic and reusable, the model outputs and subgroup insights are illustrative only. No clinical inference should be drawn from this prototype.
+🧪 Streamlit Cloud deployment planned (Week 6)
 
 ---
 
-## Contributing
+⚠️ Limitations
+Based on MIMIC-III demo, not real patient data
 
-Pull requests and issue discussions are welcome. Please see CONTRIBUTING.md for guidelines (coming soon).
+All predictions, summaries, and visuals are illustrative only
 
----
-
-## License
-
-MIT License – see LICENSE file for details.
+Do not use for clinical inference or decision-making
 
 ---
 
-## Acknowledgements
+📜 License
+MIT License – see LICENSE
 
-- MIT Lab for Computational Physiology for MIMIC-III
-- HuggingFace & OpenAI for LLM tools
-- scikit-learn, SHAP, and spaCy communities
+🙏 Acknowledgements
+MIT Lab for Computational Physiology (MIMIC-III)
 
----
+scikit-learn, SHAP, spaCy, Streamlit
+
+HuggingFace, OpenAI for NLP infrastructure

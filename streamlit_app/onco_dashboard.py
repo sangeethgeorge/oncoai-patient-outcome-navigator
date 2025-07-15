@@ -35,25 +35,11 @@ st.info("""
 # --- Mode Configuration ---
 USE_GITHUB_MODE = os.environ.get("ONCOAI_MODE", "github").lower() == "github"
 
-# Only import mlflow if NOT using GitHub mode
-if not USE_GITHUB_MODE:
-    import mlflow
-    import mlflow.sklearn
-    from mlflow.tracking import MlflowClient
+
 
 MODEL_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/model.pkl"
 SCALER_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/scaler.pkl"
 FEATURES_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/feature_names.txt"
-
-if not USE_GITHUB_MODE:
-    @st.cache_data
-    def get_latest_model_run_id(model_name="OncoAICancerMortalityPredictor"):
-        client = MlflowClient()
-        versions = client.search_model_versions(f"name='{model_name}'")
-        if not versions:
-            return None
-        latest = sorted(versions, key=lambda v: v.creation_timestamp, reverse=True)[0]
-        return latest.run_id
 
 
 
@@ -66,13 +52,26 @@ def load_artifacts():
             scaler = joblib.load(BytesIO(requests.get(SCALER_GITHUB_URL).content))
             feature_names = requests.get(FEATURES_GITHUB_URL).text.strip().splitlines()
         else:
+            # ⬇️ Local development mode: import mlflow inside the conditional block
+            import mlflow
+            import mlflow.sklearn
+            from mlflow.tracking import MlflowClient
+
+            # 🔁 define helper inside block to prevent import errors in cloud
+            def get_latest_model_run_id(model_name="OncoAICancerMortalityPredictor"):
+                client = MlflowClient()
+                versions = client.search_model_versions(f"name='{model_name}'")
+                if not versions:
+                    return None
+                latest = sorted(versions, key=lambda v: v.creation_timestamp, reverse=True)[0]
+                return latest.run_id
+
             st.info("🧪 Loading model from MLflow (local dev mode)")
             model = mlflow.pyfunc.load_model("models:/OncoAICancerMortalityPredictor/Latest")
             scaler = mlflow.pyfunc.load_model("models:/onco_scaler/Latest")
 
-            client = MlflowClient()
-            run_id = client.search_model_versions("name='OncoAICancerMortalityPredictor'")[0].run_id
-            feature_path = client.download_artifacts(run_id, "features/feature_names.txt")
+            run_id = get_latest_model_run_id()
+            feature_path = MlflowClient().download_artifacts(run_id, "features/feature_names.txt")
             with open(feature_path, "r") as f:
                 feature_names = [line.strip() for line in f if line.strip()]
     except Exception as e:
@@ -80,6 +79,7 @@ def load_artifacts():
         st.stop()
 
     return model, scaler, feature_names
+
 
 
 

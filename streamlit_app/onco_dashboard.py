@@ -47,9 +47,24 @@ def pyfunc_predict(model, df: pd.DataFrame) -> pd.DataFrame:
 
 
 # --- Load model artifacts ---
+
+# --- Helper to use MLflow PyFunc correctly (only if MLflow is used) ---
+def pyfunc_predict(model, df: pd.DataFrame) -> pd.DataFrame:
+    try:
+        # Assumes MLflow pyfunc model structure where predict method takes (context, dataframe)
+        # and returns a dataframe (or series that can be converted).
+        # The first argument (context) is None when called directly without MLflow tracking context.
+        return model.predict(None, df)
+    except AttributeError:
+        # If it's a joblib-loaded scikit-learn model, assume direct predict_proba call
+        # and return a DataFrame with a 'predicted_probability' column.
+        return pd.DataFrame({"predicted_probability": model.predict_proba(df)[:, 1]})
+
+
+# --- Load model artifacts ---
 @st.cache_resource
 def load_artifacts():
-    st.write(f"DEBUG: Current USE_GITHUB_MODE is {USE_GITHUB_MODE}") # Add for debugging
+    # No debug print for USE_GITHUB_MODE here, as it's for internal logic
     try:
         if USE_GITHUB_MODE:
             st.info("🔄 Loading model from GitHub (Streamlit Cloud mode)")
@@ -66,14 +81,9 @@ def load_artifacts():
             scaler = joblib.load(BytesIO(scaler_response.content))
             feature_names = features_response.text.strip().splitlines()
 
-            # Add an assertion or print to confirm the type of model loaded
-            st.write(f"DEBUG: Model loaded from GitHub is of type: {type(model)}")
-            st.write(f"DEBUG: Scaler loaded from GitHub is of type: {type(scaler)}")
-
         else:
             # This block will ONLY be executed if USE_GITHUB_MODE is False
             # Therefore, mlflow imports are only attempted if this path is taken.
-            import mlflow
             import mlflow.sklearn
             from mlflow.tracking import MlflowClient
 
@@ -102,6 +112,7 @@ def load_artifacts():
         st.stop()
 
     return model, scaler, feature_names
+
 
 # --- Utility Functions ---
 def get_feature_template(feature_names):

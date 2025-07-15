@@ -42,7 +42,9 @@ def pyfunc_predict(model, df: pd.DataFrame) -> pd.DataFrame:
 
 # --- Load model artifacts ---
 @st.cache_resource
+@st.cache_resource
 def load_artifacts():
+    st.write(f"DEBUG: USE_GITHUB_MODE is {USE_GITHUB_MODE}")
     try:
         if USE_GITHUB_MODE:
             st.info("🔄 Loading model from GitHub (Streamlit Cloud mode)")
@@ -50,9 +52,16 @@ def load_artifacts():
             scaler = joblib.load(BytesIO(requests.get(SCALER_GITHUB_URL).content))
             feature_names = requests.get(FEATURES_GITHUB_URL).text.strip().splitlines()
         else:
-            import mlflow
-            import mlflow.sklearn
-            from mlflow.tracking import MlflowClient
+            st.info("DEBUG: Entering MLflow loading block...")
+            # Add a try-except around the mlflow import specifically
+            try:
+                import mlflow
+                import mlflow.sklearn
+                from mlflow.tracking import MlflowClient
+                st.info("DEBUG: MLflow successfully imported.")
+            except ImportError as ie:
+                st.error(f"🚨 DEBUG: MLflow import failed: {ie}")
+                raise # Re-raise to catch in the outer except
 
             def get_latest_model_run_id(model_name="OncoAICancerMortalityPredictor"):
                 client = MlflowClient()
@@ -71,6 +80,8 @@ def load_artifacts():
                 feature_names = [line.strip() for line in f if line.strip()]
     except Exception as e:
         st.error(f"🚨 Failed to load model artifacts: {e}")
+        # You can add more context here if needed
+        # st.exception(e) # This will print a full traceback in the Streamlit UI
         st.stop()
 
     return model, scaler, feature_names

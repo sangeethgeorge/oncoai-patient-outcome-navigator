@@ -38,9 +38,9 @@ mlruns/
 # Models (if not tracked by MLflow or other versioning)
 # Generally, models generated from training should not be committed to Git.
 # They are usually versioned by MLflow, DVC, or stored in object storage.
-models/model.pkl
-models/scaler.pkl
-models/feature_names.txt
+#models/model.pkl
+#models/scaler.pkl
+#models/feature_names.txt
 
 # Reports and logs that can be regenerated
 reports/shap_plots/inference/

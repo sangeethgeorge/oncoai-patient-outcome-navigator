@@ -1,69 +1,63 @@
-# -----------------------------------------------------------
-# macOS & System
-# -----------------------------------------------------------
-.DS_Store
-
-# -----------------------------------------------------------
 # Python
-# -----------------------------------------------------------
 __pycache__/
-*.py[cod]
-*.pyd
+*.pyc
 *.pyo
-
-# -----------------------------------------------------------
-# Poetry & Environments
-# -----------------------------------------------------------
-.env
-.venv/
+*.pyd
+.Python
 env/
 venv/
-src/.venv/
-.poetry/
-poetry.lock
-pyproject.toml 
+.venv/
+pip-log.txt
+pip-delete-this-arg.txt
+.pytest_cache/
+.coverage
+.tox/
+dist/
+build/
+*.egg-info/
+htmlcov/
 
-
-# -----------------------------------------------------------
-# Jupyter Notebooks
-# -----------------------------------------------------------
+# Jupyter Notebook specific ignores
 .ipynb_checkpoints/
+*.ipynb
 
-# -----------------------------------------------------------
-# IDEs & Editors
-# -----------------------------------------------------------
-.vscode/
+# Data
+# Raw data, typically too large and often sensitive
+data/raw/
+
+# Processed data, often regenerated from raw data or can be large
+data/processed/
+
+# External data, potentially large or easily re-downloadable
+data/external/
+
+# MLflow
+mlruns/
+.mlflowignore
+
+# Models (if not tracked by MLflow or other versioning)
+# Generally, models generated from training should not be committed to Git.
+# They are usually versioned by MLflow, DVC, or stored in object storage.
+models/model.pkl
+models/scaler.pkl
+models/feature_names.txt
+
+# Reports and logs that can be regenerated
+reports/shap_plots/inference/
+reports/shap_plots/final/ # Assuming these are generated plots
+
+# Poetry
+poetry.lock # If you prefer to regenerate this based on pyproject.toml
+.mypy_cache/
+
+# IDE-specific files
 .idea/
+.vscode/
+*.swp
+*.bak
+*~
+.DS_Store
 
-# -----------------------------------------------------------
-# Data & Artifacts
-# -----------------------------------------------------------
-# Ignore all raw/processed data but keep README.md
-data/raw/*
-!data/raw/README.md
-data/processed/*
-!data/processed/README.md
-data/external/*
-!data/external/README.md
-
-# Specific patterns
-*.parquet
-*.csv
-*.csv.gz
-*.sqlite3
-
-# -----------------------------------------------------------
-# MLflow Local Tracking
-# -----------------------------------------------------------
-#mlruns/
-
-# -----------------------------------------------------------
-# Reports & Outputs
-# -----------------------------------------------------------
-reports/shap_plots/*
-!reports/shap_plots/README.md
-
-# -----------------------------------------------------------
-# Miscellaneous
-# -----------------------------------------------------------
-cache/
+# Operating System Files
+.DS_Store
+Thumbs.db

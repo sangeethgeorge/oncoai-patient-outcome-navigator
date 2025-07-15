@@ -9,6 +9,25 @@ import requests
 from io import BytesIO
 from datetime import datetime
 
+# --- Configuration (Moved to the very top) ---
+USE_GITHUB_MODE = os.environ.get("ONCOAI_MODE", "github").lower() == "github"
+
+# --- Conditionally import MLflow only if NOT in GitHub mode ---
+# This block MUST be here, after USE_GITHUB_MODE is defined, and before any functions are called
+if not USE_GITHUB_MODE:
+    try:
+        import mlflow
+        import mlflow.sklearn
+        from mlflow.tracking import MlflowClient
+        st.info("DEBUG: MLflow modules successfully imported at top level.")
+    except ImportError as e:
+        st.error(f"🚨 Failed to import MLflow at top level: {e}. Please ensure it's installed for local dev.")
+        st.stop() # Added st.stop() to halt execution if MLflow is truly needed and fails to import
+else:
+    # Optional: You can put a placeholder or just let it pass
+    st.info("DEBUG: MLflow import skipped as USE_GITHUB_MODE is True.")
+
+
 # --- App Setup ---
 st.set_page_config(page_title="OncoAI Risk Dashboard", layout="wide")
 st.title(":microscope: OncoAI 30-Day Mortality Predictor")
@@ -29,22 +48,44 @@ st.info("""
 4. Explore the **feature-level table** to see individual contributions and input values.
 """)
 
-# --- Configuration ---
-USE_GITHUB_MODE = os.environ.get("ONCOAI_MODE", "github").lower() == "github"
 
+# Keeping these here as they are actual configurations, not just defining USE_GITHUB_MODE
 MODEL_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/model.pkl"
 SCALER_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/scaler.pkl"
 FEATURES_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/feature_names.txt"
 
+
 # --- Helper to use MLflow PyFunc correctly ---
 def pyfunc_predict(model, df: pd.DataFrame) -> pd.DataFrame:
-    return model.predict(None, df)
+    # This function depends on the model's structure, which might be an MLflow pyfunc model
+    # or a joblib-loaded sklearn model. The predict method should ideally be consistent.
+    if hasattr(model, 'predict_proba') and callable(model.predict_proba):
+        probabilities = model.predict_proba(df)[:, 1] # Assuming binary classification and want prob of class 1
+        return pd.DataFrame({"predicted_probability": probabilities})
+    elif hasattr(model, 'predict') and callable(model.predict):
+        # Fallback if it's not a proba model or if pyfunc wraps differently
+        # This part might need adjustment based on how your MLflow pyfunc model actually returns predictions
+        # For a regressor, it might return direct values. For a classifier, it might be class labels.
+        # It's safest to rely on the pyfunc_predict in the load_artifacts if it truly is an MLflow pyfunc.
+        # But if model.predict(None, df) is the pattern, it should work.
+        if USE_GITHUB_MODE: # For joblib loaded models from GitHub
+            if hasattr(model, 'predict_proba'):
+                probabilities = model.predict_proba(df)[:, 1]
+                return pd.DataFrame({"predicted_probability": probabilities})
+            else:
+                # Fallback for models without predict_proba (e.g., direct class predictions)
+                predictions = model.predict(df)
+                return pd.DataFrame({"predicted_probability": predictions}) # May need reinterpretation for binary
+        else: # For MLflow pyfunc models
+             return model.predict(None, df) # This is your original pyfunc_predict behavior
+    else:
+        raise AttributeError("Model does not have a 'predict_proba' or 'predict' method.")
+
 
 # --- Load model artifacts ---
 @st.cache_resource
-@st.cache_resource
 def load_artifacts():
-    st.write(f"DEBUG: USE_GITHUB_MODE is {USE_GITHUB_MODE}")
+    st.write(f"DEBUG inside load_artifacts: USE_GITHUB_MODE is {USE_GITHUB_MODE}") # Keep this for double-checking
     try:
         if USE_GITHUB_MODE:
             st.info("🔄 Loading model from GitHub (Streamlit Cloud mode)")
@@ -52,26 +93,18 @@ def load_artifacts():
             scaler = joblib.load(BytesIO(requests.get(SCALER_GITHUB_URL).content))
             feature_names = requests.get(FEATURES_GITHUB_URL).text.strip().splitlines()
         else:
-            st.info("DEBUG: Entering MLflow loading block...")
-            # Add a try-except around the mlflow import specifically
-            try:
-                import mlflow
-                import mlflow.sklearn
-                from mlflow.tracking import MlflowClient
-                st.info("DEBUG: MLflow successfully imported.")
-            except ImportError as ie:
-                st.error(f"🚨 DEBUG: MLflow import failed: {ie}")
-                raise # Re-raise to catch in the outer except
-
+            st.info("🧪 Loading model from MLflow (local dev mode)")
+            # No need to import mlflow here anymore, as it's done conditionally at the top
+            
             def get_latest_model_run_id(model_name="OncoAICancerMortalityPredictor"):
-                client = MlflowClient()
+                # MlflowClient should now be available from top-level import IF not USE_GITHUB_MODE
+                client = MlflowClient() 
                 versions = client.search_model_versions(f"name='{model_name}'")
                 if not versions:
                     return None
                 latest = sorted(versions, key=lambda v: v.creation_timestamp, reverse=True)[0]
                 return latest.run_id
 
-            st.info("🧪 Loading model from MLflow (local dev mode)")
             model = mlflow.pyfunc.load_model("models:/OncoAICancerMortalityPredictor/Latest")
             scaler = mlflow.pyfunc.load_model("models:/onco_scaler/Latest")
             run_id = get_latest_model_run_id()
@@ -80,12 +113,10 @@ def load_artifacts():
                 feature_names = [line.strip() for line in f if line.strip()]
     except Exception as e:
         st.error(f"🚨 Failed to load model artifacts: {e}")
-        # You can add more context here if needed
-        # st.exception(e) # This will print a full traceback in the Streamlit UI
         st.stop()
 
     return model, scaler, feature_names
-
+    
 # --- Utility Functions ---
 def get_feature_template(feature_names):
     return pd.DataFrame([{feature: 0.0 for feature in feature_names}])

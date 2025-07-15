@@ -4,6 +4,8 @@
 
 Critically ill cancer patients face high ICU mortality risk, yet early prediction remains challenging due to fragmented EHR data. OncoAI helps clinical researchers, data scientists, and translational teams explore how early labs and vitals may signal short-term outcomes through an interpretable, modular dashboard.
 
+🔗 **Try the Streamlit App:** [oncoai-db.streamlit.app](https://oncoai-db.streamlit.app)
+
 ---
 
 ## 🔍 Overview

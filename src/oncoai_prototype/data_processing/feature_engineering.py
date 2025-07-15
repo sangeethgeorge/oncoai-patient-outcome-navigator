@@ -18,23 +18,24 @@ from oncoai_prototype.utils.leakage import check_for_leakage
 # --- Config ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data", "processed")
-OUTPUT_FILE = os.path.join(DATA_DIR, "onco_features_cleaned.parquet")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Get PostgreSQL connection string from environment variable
+FEATURE_FILE = os.path.join(DATA_DIR, "onco_features_cleaned.parquet")
+VITALS_FILE = os.path.join(DATA_DIR, "all_vitals_48h.parquet")
+LABS_FILE = os.path.join(DATA_DIR, "all_labs_48h.parquet")
+
+# Load environment
 load_dotenv()
 POSTGRES_CONN_STR = os.getenv("ONCOAI_POSTGRES_CONN_STR")
-
 if POSTGRES_CONN_STR is None:
     raise ValueError("ONCOAI_POSTGRES_CONN_STR environment variable not set.")
 
-
-# --- Load data from Postgres via postgres_scan ---
+# --- Load data from PostgreSQL via DuckDB ---
 def load_data():
     try:
         duckdb.sql("INSTALL postgres_scanner;")
     except duckdb.CatalogException:
-        pass  # Already installed
+        pass
 
     duckdb.sql("LOAD postgres_scanner;")
 
@@ -52,21 +53,29 @@ def build_onco_shap_features(top_n=10):
     print("Loading source data...")
     data = load_data()
 
+    print("Saving full vitals and labs as Parquet...")
+    data["vitals"].to_parquet(VITALS_FILE, index=False)
+    data["labs"].to_parquet(LABS_FILE, index=False)
+
     print("Filtering high-coverage vitals and labs...")
     vitals = filter_high_coverage(data['vitals'], label_col='vitals_label', min_coverage=0.95)
-    labs = filter_high_coverage(data['labs'], label_col='labs_label', min_coverage=0.70)  
-   
+    labs = filter_high_coverage(data['labs'], label_col='labs_label', min_coverage=0.70)
+
     print("Creating time-series features...")
-    vitals_features = compute_time_series_features( df=vitals,
-    time_col='charttime',
-    value_col='vitals_valuenum',
-    label_col='vitals_label',
-    icu_id_col='icustay_id')
-    labs_features = compute_time_series_features(df=labs,
-    time_col='charttime',
-    value_col='labs_valuenum',
-    label_col='labs_label',
-    icu_id_col='icustay_id')
+    vitals_features = compute_time_series_features(
+        df=vitals,
+        time_col='charttime',
+        value_col='vitals_valuenum',
+        label_col='vitals_label',
+        icu_id_col='icustay_id'
+    )
+    labs_features = compute_time_series_features(
+        df=labs,
+        time_col='charttime',
+        value_col='labs_valuenum',
+        label_col='labs_label',
+        icu_id_col='icustay_id'
+    )
 
     print("Merging cohort with vitals and labs...")
     full_df = merge_features(data['cohort'], vitals_features, labs_features)
@@ -83,13 +92,15 @@ def build_onco_shap_features(top_n=10):
     X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
 
     print("Checking for data leakage...")
-    X_train = check_for_leakage(X_train, target_col="mortality_30d")  
+    X_train = check_for_leakage(X_train, target_col="mortality_30d")
     X_test = X_test[X_train.columns]
 
     print("Fitting XGBoost for SHAP feature importance...")
     model = xgb.XGBClassifier(
-        n_estimators=100, max_depth=4, learning_rate=0.1,
-	eval_metric='logloss'
+        n_estimators=100,
+        max_depth=4,
+        learning_rate=0.1,
+        eval_metric='logloss'
     )
     model.fit(X_train, y_train)
 
@@ -99,17 +110,16 @@ def build_onco_shap_features(top_n=10):
 
     mean_shap = pd.DataFrame(shap_values.values, columns=X_test.columns).abs().mean().sort_values(ascending=False)
     top_features = mean_shap.head(top_n).index.tolist()
-
     print(f"Top {top_n} SHAP features: {top_features}")
 
-    all_cols = id_cols + top_features + [label_col]
-    final_df = df_clean[all_cols].copy()
-
+    final_df = df_clean[id_cols + top_features + [label_col]].copy()
     return final_df
 
 # --- Run Pipeline ---
 if __name__ == "__main__":
     print("Starting OncoAI full feature + SHAP pipeline...")
     final_df = build_onco_shap_features(top_n=10)
-    final_df.to_parquet(OUTPUT_FILE, index=False)
-    print(f"Saved final feature subset to {OUTPUT_FILE} — shape: {final_df.shape}")
+    final_df.to_parquet(FEATURE_FILE, index=False)
+    print(f"✅ Saved SHAP features to {FEATURE_FILE} — shape: {final_df.shape}")
+    print(f"✅ Saved all vitals to {VITALS_FILE}")
+    print(f"✅ Saved all labs to {LABS_FILE}")

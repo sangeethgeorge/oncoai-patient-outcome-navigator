@@ -119,14 +119,17 @@ with tabs[0]:
 with tabs[1]:
     st.subheader("🧬 Oncology ICU Cohort (n = {})".format(len(features)))
     col1, col2 = st.columns(2)
+
     gender = col1.selectbox("Filter by Gender", ["All", "M", "F"])
-    cancer = col2.selectbox("Filter by Cancer Type", ["All"] + sorted(features["short_title"].unique()))
+    min_age, max_age = col2.slider("Filter by Age", 18, 89, (18, 89))
+
     filtered = features.copy()
     if gender != "All":
         filtered = filtered[filtered["gender"] == gender]
-    if cancer != "All":
-        filtered = filtered[filtered["short_title"] == cancer]
-    st.dataframe(filtered[["subject_id", "age", "gender", "short_title", "icustay_id", "mortality_30d"]], use_container_width=True)
+    filtered = filtered[(filtered["age"] >= min_age) & (filtered["age"] <= max_age)]
+
+    st.dataframe(filtered[["subject_id", "age", "gender", "icustay_id", "mortality_30d"]], use_container_width=True)
+
 
 # --------------------------
 # 3. Patient Risk Viewer

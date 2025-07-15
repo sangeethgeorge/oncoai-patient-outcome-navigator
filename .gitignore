@@ -23,7 +23,7 @@ htmlcov/
 
 # Data
 # Raw data, typically too large and often sensitive
-data/raw/
+#data/raw/
 
 # Processed data, often regenerated from raw data or can be large
 data/processed/

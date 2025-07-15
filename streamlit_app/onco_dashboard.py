@@ -15,11 +15,15 @@ st.set_page_config(page_title="OncoAI Risk Dashboard", layout="wide")
 st.title(":microscope: OncoAI 30-Day Mortality Predictor")
 
 st.markdown("""
-Welcome to **OncoAI**, a research prototype built on the MIMIC-III dataset.
+Welcome to **OncoAI**, an AI-powered research tool built on MIMIC-III data.
 
-This tool predicts the **30-day mortality risk** for ICU patients with cancer based on early vitals and lab values. It also provides an explanation of how each feature contributes to the prediction using SHAP.
+Designed for clinical researchers and data scientists, OncoAI helps explore how early ICU labs and vitals can predict **30-day mortality** in cancer patients.
 
-⚠️ *Note: This app is for demonstration and research purposes only, not for clinical use.*
+It provides:
+- A risk estimate based on early ICU data
+- Feature-level explanations using SHAP
+
+⚠️ *For research and educational use only. Not intended for clinical decision-making.*
 """)
 
 st.info("""
@@ -186,7 +190,8 @@ if st.button(":mag: Predict 30-Day Mortality"):
 
     pred_result = pyfunc_predict(model, input_scaled_df)
     prob = pred_result["predicted_probability"].iloc[0]
-    st.success(f"Predicted 30-Day Mortality Probability: {prob:.2%}")
+    st.success(f"🧮 Predicted 30-Day Mortality Risk: **{prob:.2%}**")
+    st.caption("This means the model estimates a {:.0f}% chance of mortality within 30 days based on the inputs.".format(prob * 100))
 
     with st.spinner("Generating SHAP Explanation..."):
         shap_expl = generate_shap_explanation(model, input_scaled_df, background_scaled_df)
@@ -195,16 +200,37 @@ if st.button(":mag: Predict 30-Day Mortality"):
     shap_ax = shap.plots.waterfall(shap_expl[0], show=False)
     st.pyplot(shap_ax.figure)
 
-    with st.expander("📘 How to interpret this plot"):
-        st.markdown("""
-        - **Red bars** increase predicted risk.
-        - **Blue bars** decrease predicted risk.
-        - Feature impacts are cumulative from the model's baseline.
-        """)
+    st.markdown("### 📈 How to Interpret the SHAP Plot")
+    st.info("""
+    SHAP (SHapley Additive exPlanations) shows how each feature contributes to the model's predicted risk.
 
-    contrib_df = create_shap_table(user_input_df, shap_expl)
+    - 🔴 **Red bars** → Feature **increases** the mortality risk  
+    - 🔵 **Blue bars** → Feature **decreases** the mortality risk  
+    - 🟡 **Length of bar** → Magnitude of impact (larger = more influence)
+
+    The **base value** is the average model output over background patients.  
+    The **SHAP value** shows how your inputs move the prediction up or down from this baseline.
+
+    For example:  
+    - A **+0.12 SHAP value** means the feature pushed the risk **12% higher**  
+    - A **–0.05 SHAP value** means the feature reduced risk by **5%**
+    """)
+
+    # Feature Table with SHAP Values
     st.markdown("### :mag: Feature-Level Breakdown")
-    st.dataframe(contrib_df, use_container_width=True, height=500)
+    contrib_df = create_shap_table(user_input_df, shap_expl)
+    contrib_df["Direction"] = contrib_df["Contribution Direction"].map({
+        "Increase Risk": "⬆️ Increase Risk",
+        "Decrease Risk": "⬇️ Decrease Risk"
+    })
+
+    styled_df = contrib_df[["Feature", "Value", "SHAP Value", "Direction"]].style\
+        .format({"SHAP Value": "{:+.4f}", "Value": "{:.2f}"})\
+        .bar(subset=["SHAP Value"], align="zero", color=['#d65f5f', '#5fba7d'])\
+        .set_properties(**{'text-align': 'left'})\
+        .set_table_styles([dict(selector='th', props=[('text-align', 'left')])])
+
+    st.dataframe(styled_df, use_container_width=True, height=550)
 
 st.markdown("---")
 st.markdown("Developed by **Sangeeth George** — [LinkedIn](https://www.linkedin.com/in/sangeeth-george/) | OncoAI (MIMIC-III)")

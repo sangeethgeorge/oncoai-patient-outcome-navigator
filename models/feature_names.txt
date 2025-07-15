@@ -1,0 +1,10 @@
+mean_mchc
+min_heart_rate
+mean_chloride
+slope_bicarbonate
+mean_urea_nitrogen
+min_white_blood_cells
+mean_rdw
+max_bicarbonate
+mean_glucose
+slope_chloride

@@ -34,7 +34,7 @@ st.info("""
 
 # --- Mode Configuration ---
 USE_GITHUB_MODE = os.environ.get("ONCOAI_MODE", "github").lower() == "github"
-
+st.write(f"USE_GITHUB_MODE is: {USE_GITHUB_MODE}") # <--- ADD THIS LINE
 
 
 MODEL_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/model.pkl"

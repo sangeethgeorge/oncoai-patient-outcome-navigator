@@ -12,7 +12,39 @@ import mlflow
 
 # --- App Setup ---
 st.set_page_config(page_title="OncoAI Risk Dashboard", layout="wide")
-st.title(":microscope: OncoAI 30-Day Mortality Predictor")
+# --- Custom Styles for UI Enhancements ---
+st.markdown("""
+<style>
+/* General expander header styling */
+details summary {
+    background-color: #f1f8ff !important;
+    border-left: 6px solid #1e88e5;
+    font-weight: 600;
+    padding: 10px 14px;
+    font-size: 1.15rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+details[open] summary {
+    background-color: #e0f7fa !important;
+    border-left: 6px solid #00acc1;
+}
+
+/* SHAP-specific override */
+details[open] summary:has-text('How to Interpret') {
+    background-color: #bbdefb !important;
+    border-left: 6px solid #1976d2;
+}
+
+/* Expander content font size */
+.streamlit-expanderContent {
+    font-size: 1.05rem !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.title("🧠 OncoAI 30-Day Mortality Predictor")
 
 st.markdown("""
 Welcome to **OncoAI**, an AI-powered research tool built on MIMIC-III data.
@@ -26,13 +58,13 @@ It provides:
 ⚠️ *For research and educational use only. Not intended for clinical decision-making.*
 """)
 
-st.info("""
-### How to Use This Tool
-1. Enter patient vitals and lab values using the form below.
-2. Click **"Predict 30-Day Mortality"** to generate a risk estimate.
-3. Review the **SHAP explanation plot** to understand which features increased or decreased the predicted risk.
-4. Explore the **feature-level table** to see individual contributions and input values.
-""")
+with st.expander("🧭 How to Use"):
+    st.markdown("""
+    1. Enter patient vitals and lab values in the form below.
+    2. Click **Predict 30-Day Mortality** to generate a risk estimate.
+    3. View the SHAP explanation to understand how each feature influenced the prediction.
+    4. Review the feature table to compare values and their contribution.
+    """)
 
 # --- Configuration ---
 USE_GITHUB_MODE = os.environ.get("ONCOAI_MODE", "github").lower() == "github"
@@ -168,7 +200,7 @@ feature_info = get_feature_info()
 background_df = get_feature_template(feature_names) # dummy background for SHAP
 
 # --- User Input UI ---
-st.subheader(":memo: Enter Patient Features")
+st.subheader("📋 Enter Patient Features")
 input_data = {}
 col1, col2 = st.columns(2)
 display_features = [f for f in feature_names if f in feature_info]
@@ -183,45 +215,54 @@ for i, feature in enumerate(display_features):
 
 user_input_df = align_user_input(input_data, feature_template)
 
+
 # --- Prediction ---
-if st.button(":mag: Predict 30-Day Mortality"):
+if st.button("🔍 Predict 30-Day Mortality"):
     input_scaled_df = pyfunc_predict(scaler, user_input_df)
     background_scaled_df = pyfunc_predict(scaler, background_df)
 
     pred_result = pyfunc_predict(model, input_scaled_df)
     prob = pred_result["predicted_probability"].iloc[0]
-    st.success(f"🧮 Predicted 30-Day Mortality Risk: **{prob:.2%}**")
+
+    # Styled Risk Box
+    color = "#d9534f" if prob > 0.5 else "#f0ad4e" if prob > 0.2 else "#5cb85c"
+    st.markdown(f"""
+    <div style='background-color:{color}; padding: 20px; border-radius: 8px; text-align: center; color: white; font-size: 20px; font-weight: bold;'>
+        🧮 Predicted 30-Day Mortality Risk: {prob:.2%}
+    </div>
+    """, unsafe_allow_html=True)
+
     st.caption("This means the model estimates a {:.0f}% chance of mortality within 30 days based on the inputs.".format(prob * 100))
 
-    with st.spinner("Generating SHAP Explanation..."):
+    with st.spinner("🧠 Generating SHAP Explanation..."):
         shap_expl = generate_shap_explanation(model, input_scaled_df, background_scaled_df)
 
-    st.markdown("### :bar_chart: SHAP Feature Contributions")
+    # --- SHAP Explanation ---
+    st.markdown("## 📈 SHAP Feature Contributions")
     shap_ax = shap.plots.waterfall(shap_expl[0], show=False)
     st.pyplot(shap_ax.figure)
+    
+    st.markdown("🔍 Want help interpreting the SHAP plot?")
+    with st.expander("ℹ️ How to Interpret This Plot"):
+        st.info("""
+        SHAP (SHapley Additive exPlanations) shows how each input moved the risk from the average:
 
-    st.markdown("### 📈 How to Interpret the SHAP Plot")
-    st.info("""
-    SHAP (SHapley Additive exPlanations) shows how each feature contributes to the model's predicted risk.
+        - 🔴 **Red** → Increased predicted risk  
+        - 🔵 **Blue** → Decreased predicted risk  
+        - 📏 **Length** → Impact size  
+        - ⚪ **Base value** is the average risk across patients
 
-    - 🔴 **Red bars** → Feature **increases** the mortality risk  
-    - 🔵 **Blue bars** → Feature **decreases** the mortality risk  
-    - 🟡 **Length of bar** → Magnitude of impact (larger = more influence)
+        **Example:**  
+        - `+0.12` → 12% increase in risk  
+        - `-0.05` → 5% decrease in risk  
+        """)
 
-    The **base value** is the average model output over background patients.  
-    The **SHAP value** shows how your inputs move the prediction up or down from this baseline.
-
-    For example:  
-    - A **+0.12 SHAP value** means the feature pushed the risk **12% higher**  
-    - A **–0.05 SHAP value** means the feature reduced risk by **5%**
-    """)
-
-    # Feature Table with SHAP Values
-    st.markdown("### :mag: Feature-Level Breakdown")
+    # --- SHAP Table ---
+    st.markdown("## 📌 Feature-Level Breakdown")
     contrib_df = create_shap_table(user_input_df, shap_expl)
     contrib_df["Direction"] = contrib_df["Contribution Direction"].map({
-        "Increase Risk": "⬆️ Increase Risk",
-        "Decrease Risk": "⬇️ Decrease Risk"
+        "Increase Risk": "🔺 Increase Risk",
+        "Decrease Risk": "🔻 Decrease Risk"
     })
 
     styled_df = contrib_df[["Feature", "Value", "SHAP Value", "Direction"]].style\
@@ -232,5 +273,6 @@ if st.button(":mag: Predict 30-Day Mortality"):
 
     st.dataframe(styled_df, use_container_width=True, height=550)
 
+# --- Footer ---
 st.markdown("---")
 st.markdown("Developed by **Sangeeth George** — [LinkedIn](https://www.linkedin.com/in/sangeeth-george/) | OncoAI (MIMIC-III)")

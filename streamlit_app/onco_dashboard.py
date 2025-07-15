@@ -3,12 +3,12 @@ import pandas as pd
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-
 import shap
 import joblib
 import requests
 from io import BytesIO
 from datetime import datetime
+
 
 # --- App Setup ---
 st.set_page_config(page_title="OncoAI Risk Dashboard", layout="wide")
@@ -32,14 +32,14 @@ st.info("""
 
 # --- MLflow Configuration ---
 
-# --- Artifact Loading ---
-USE_GITHUB_MODE = True
+# --- Mode Configuration ---
+USE_GITHUB_MODE = os.environ.get("ONCOAI_MODE", "github").lower() == "github"
 
+# Only import mlflow if NOT using GitHub mode
 if not USE_GITHUB_MODE:
     import mlflow
     import mlflow.sklearn
     from mlflow.tracking import MlflowClient
-
 
 MODEL_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/model.pkl"
 SCALER_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/scaler.pkl"
@@ -80,6 +80,7 @@ def load_artifacts():
         st.stop()
 
     return model, scaler, feature_names
+
 
 
 # --- Utility Functions ---

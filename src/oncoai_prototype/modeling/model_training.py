@@ -12,6 +12,8 @@ import mlflow.pyfunc
 from mlflow.models import ModelSignature
 from mlflow.types.schema import Schema, ColSpec, DataType
 from mlflow.types.utils import _infer_schema
+from mlflow.tracking import MlflowClient
+
 
 # --- Custom utility imports ---
 from oncoai_prototype.utils.io_utils import load_dataset
@@ -89,6 +91,23 @@ def run_training_pipeline():
     print("Model training complete.")
     return model, y_test, y_pred, y_prob, X_train_processed, scaler, X_train_df
 
+def export_model_artifacts_locally(model_path, scaler_path, features_path, output_dir="models"):
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Strip file:// prefix if present
+    def to_local_path(uri):
+        return uri.replace("file://", "") if uri.startswith("file://") else uri
+
+    model_path = to_local_path(model_path)
+    scaler_path = to_local_path(scaler_path)
+    features_path = to_local_path(features_path)
+
+    shutil.copy(model_path, os.path.join(output_dir, "model.pkl"))
+    shutil.copy(scaler_path, os.path.join(output_dir, "scaler.pkl"))
+    shutil.copy(features_path, os.path.join(output_dir, "feature_names.txt"))
+    print(f"🗂 Artifacts copied to local folder: {output_dir}/")
+
+
 # --- Main Execution ---
 if __name__ == "__main__":
     mlflow.set_experiment("OncoAI-Mortality-Prediction")
@@ -154,7 +173,26 @@ if __name__ == "__main__":
             registered_model_name="onco_scaler"
         )
 
+        # Get run ID of current run
+        run_id = mlflow.active_run().info.run_id
+        client = MlflowClient()
+
+        # Use MLflow client to get local paths
+        model_path_local = client.download_artifacts(run_id, "onco_model/python_model.pkl")
+        scaler_path_local = client.download_artifacts(run_id, "onco_scaler_model/python_model.pkl")
+        features_path_local = client.download_artifacts(run_id, "features/feature_names.txt")
+
+        # Save to local 'models/' for GitHub upload
+        export_model_artifacts_locally(
+            model_path=model_path_local,
+            scaler_path=scaler_path_local,
+            features_path=features_path_local
+        )
+
+
         # Optional: Clean up local artifacts directory
         shutil.rmtree(model_artifact_dir, ignore_errors=True)
 
         print("✅ Training run and model registration complete.")
+
+        

@@ -1,0 +1,10 @@
+artifact_location: file:///Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/mlruns/315891671073447655/models/m-4d4474777fd54dec8b348d485806b18d/artifacts
+creation_timestamp: 1752587943628
+experiment_id: '315891671073447655'
+last_updated_timestamp: 1752587945322
+model_id: m-4d4474777fd54dec8b348d485806b18d
+model_type: null
+name: onco_inference_model
+source_run_id: 435ec474adfa4013b63c82193ebdc420
+status: 2
+status_message: null

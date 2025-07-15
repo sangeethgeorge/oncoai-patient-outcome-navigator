@@ -48,6 +48,7 @@ reports/shap_plots/final/ # Assuming these are generated plots
 
 # Poetry
 poetry.lock # If you prefer to regenerate this based on pyproject.toml
+pyproject.toml
 .mypy_cache/
 
 # IDE-specific files

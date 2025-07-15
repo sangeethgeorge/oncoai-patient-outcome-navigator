@@ -1,6 +1,7 @@
 # OncoAI Patient Outcome Navigator
 
-🧠 AI-powered clinical dashboard for 30-day mortality prediction in oncology ICU patients using MIMIC-III demo data
+🧠 AI-powered clinical dashboard for 30-day mortality prediction in oncology ICU patients using MIMIC-III demo data. 
+OncoAI is built for clinical researchers, data scientists, and translational teams who want to explore how early ICU data can signal outcomes in critically ill cancer patients.
 
 ---
 
@@ -137,6 +138,5 @@ MIT License – see LICENSE
 ## 🙏 Acknowledgements
 MIT Lab for Computational Physiology (MIMIC-III)
 
-scikit-learn, SHAP, spaCy, Streamlit
+scikit-learn, SHAP, Streamlit, spaCy, HuggingFace, OpenAI
 
-HuggingFace, OpenAI for NLP infrastructure

@@ -240,8 +240,9 @@ if st.button("🔍 Predict 30-Day Mortality"):
     # --- SHAP Explanation ---
     st.markdown("## 📈 SHAP Feature Contributions")
     shap_ax = shap.plots.waterfall(shap_expl[0], show=False)
-    st.pyplot(shap_ax.figure)
-    
+    fig = shap_ax.figure
+    st.pyplot(fig, use_container_width=True)   
+
     st.markdown("🔍 Want help interpreting the SHAP plot?")
     with st.expander("ℹ️ How to Interpret This Plot"):
         st.info("""

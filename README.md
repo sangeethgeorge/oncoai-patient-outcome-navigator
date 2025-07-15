@@ -1,7 +1,8 @@
 # OncoAI Patient Outcome Navigator
 
-🧠 AI-powered clinical dashboard for 30-day mortality prediction in oncology ICU patients using MIMIC-III demo data. 
-OncoAI is built for clinical researchers, data scientists, and translational teams who want to explore how early ICU data can signal outcomes in critically ill cancer patients.
+🧠 Early risk prediction for critically ill cancer patients with MIMIC-III EHR data
+
+Critically ill cancer patients face high ICU mortality risk, yet early prediction remains challenging due to fragmented EHR data. OncoAI helps clinical researchers, data scientists, and translational teams explore how early labs and vitals may signal short-term outcomes through an interpretable, modular dashboard.
 
 ---
 

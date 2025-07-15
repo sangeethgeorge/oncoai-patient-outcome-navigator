@@ -20,6 +20,9 @@ env/
 venv/
 src/.venv/
 .poetry/
+poetry.lock
+pyproject.toml # Exclude pyproject.toml as requested
+
 
 # -----------------------------------------------------------
 # Jupyter Notebooks

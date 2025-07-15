@@ -3,14 +3,12 @@ import pandas as pd
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-import mlflow
-import mlflow.sklearn
+
 import shap
 import joblib
 import requests
 from io import BytesIO
 from datetime import datetime
-from mlflow.tracking import MlflowClient
 
 # --- App Setup ---
 st.set_page_config(page_title="OncoAI Risk Dashboard", layout="wide")
@@ -37,18 +35,26 @@ st.info("""
 # --- Artifact Loading ---
 USE_GITHUB_MODE = True
 
+if not USE_GITHUB_MODE:
+    import mlflow
+    import mlflow.sklearn
+    from mlflow.tracking import MlflowClient
+
+
 MODEL_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/model.pkl"
 SCALER_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/scaler.pkl"
 FEATURES_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/feature_names.txt"
 
-@st.cache_data
-def get_latest_model_run_id(model_name="OncoAICancerMortalityPredictor"):
-    client = MlflowClient()
-    versions = client.search_model_versions(f"name='{model_name}'")
-    if not versions:
-        return None
-    latest = sorted(versions, key=lambda v: v.creation_timestamp, reverse=True)[0]
-    return latest.run_id
+if not USE_GITHUB_MODE:
+    @st.cache_data
+    def get_latest_model_run_id(model_name="OncoAICancerMortalityPredictor"):
+        client = MlflowClient()
+        versions = client.search_model_versions(f"name='{model_name}'")
+        if not versions:
+            return None
+        latest = sorted(versions, key=lambda v: v.creation_timestamp, reverse=True)[0]
+        return latest.run_id
+
 
 
 @st.cache_resource

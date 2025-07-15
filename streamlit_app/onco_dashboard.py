@@ -9,7 +9,6 @@ import requests
 from io import BytesIO
 from datetime import datetime
 
-
 # --- App Setup ---
 st.set_page_config(page_title="OncoAI Risk Dashboard", layout="wide")
 st.title(":microscope: OncoAI 30-Day Mortality Predictor")
@@ -19,7 +18,7 @@ Welcome to **OncoAI**, a research prototype built on the MIMIC-III dataset.
 
 This tool predicts the **30-day mortality risk** for ICU patients with cancer based on early vitals and lab values. It also provides an explanation of how each feature contributes to the prediction using SHAP.
 
-⚠️ warning: *Note: This app is for demonstration and research purposes only, not for clinical use.*
+⚠️ *Note: This app is for demonstration and research purposes only, not for clinical use.*
 """)
 
 st.info("""
@@ -30,19 +29,18 @@ st.info("""
 4. Explore the **feature-level table** to see individual contributions and input values.
 """)
 
-# --- MLflow Configuration ---
-
-# --- Mode Configuration ---
+# --- Configuration ---
 USE_GITHUB_MODE = os.environ.get("ONCOAI_MODE", "github").lower() == "github"
-st.write(f"USE_GITHUB_MODE is: {USE_GITHUB_MODE}") # <--- ADD THIS LINE
-
 
 MODEL_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/model.pkl"
 SCALER_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/scaler.pkl"
 FEATURES_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/feature_names.txt"
 
+# --- Helper to use MLflow PyFunc correctly ---
+def pyfunc_predict(model, df: pd.DataFrame) -> pd.DataFrame:
+    return model.predict(None, df)
 
-
+# --- Load model artifacts ---
 @st.cache_resource
 def load_artifacts():
     try:
@@ -52,12 +50,10 @@ def load_artifacts():
             scaler = joblib.load(BytesIO(requests.get(SCALER_GITHUB_URL).content))
             feature_names = requests.get(FEATURES_GITHUB_URL).text.strip().splitlines()
         else:
-            # ⬇️ Local development mode: import mlflow inside the conditional block
             import mlflow
             import mlflow.sklearn
             from mlflow.tracking import MlflowClient
 
-            # 🔁 define helper inside block to prevent import errors in cloud
             def get_latest_model_run_id(model_name="OncoAICancerMortalityPredictor"):
                 client = MlflowClient()
                 versions = client.search_model_versions(f"name='{model_name}'")
@@ -69,7 +65,6 @@ def load_artifacts():
             st.info("🧪 Loading model from MLflow (local dev mode)")
             model = mlflow.pyfunc.load_model("models:/OncoAICancerMortalityPredictor/Latest")
             scaler = mlflow.pyfunc.load_model("models:/onco_scaler/Latest")
-
             run_id = get_latest_model_run_id()
             feature_path = MlflowClient().download_artifacts(run_id, "features/feature_names.txt")
             with open(feature_path, "r") as f:
@@ -79,9 +74,6 @@ def load_artifacts():
         st.stop()
 
     return model, scaler, feature_names
-
-
-
 
 # --- Utility Functions ---
 def get_feature_template(feature_names):
@@ -101,17 +93,16 @@ def get_feature_info():
         'slope_bicarbonate': ("Slope of Bicarbonate", -5.0, 5.0, 0.0)
     }
 
-
 def align_user_input(input_data, feature_template):
     return pd.DataFrame([input_data]).reindex(columns=feature_template.columns, fill_value=0.0)
 
 def generate_shap_explanation(model, user_input_scaled, background_scaled):
     def predict_fn(x):
         df = pd.DataFrame(x, columns=user_input_scaled.columns)
-        return model.predict(df)["predicted_probability"].values
+        return pyfunc_predict(model, df)["predicted_probability"].values
 
     explainer = shap.Explainer(predict_fn, background_scaled)
-    return explainer(user_input_scaled)  
+    return explainer(user_input_scaled)
 
 def create_shap_table(user_input_df, shap_explanation):
     feature_names = user_input_df.columns
@@ -127,11 +118,13 @@ def create_shap_table(user_input_df, shap_explanation):
     shap_df['|SHAP|'] = shap_df['SHAP Value'].abs()
     return shap_df.sort_values(by='|SHAP|', ascending=False)
 
-# --- Load and Display ---
+# --- Load Artifacts ---
 model, scaler, feature_names = load_artifacts()
 feature_template = get_feature_template(feature_names)
 feature_info = get_feature_info()
+background_df = get_feature_template(feature_names)  # dummy background for SHAP
 
+# --- User Input UI ---
 st.subheader(":memo: Enter Patient Features")
 input_data = {}
 col1, col2 = st.columns(2)
@@ -147,16 +140,13 @@ for i, feature in enumerate(display_features):
 
 user_input_df = align_user_input(input_data, feature_template)
 
+# --- Prediction ---
 if st.button(":mag: Predict 30-Day Mortality"):
-    # Scale input and background
-    input_scaled_df = scaler.predict(user_input_df)
-    background_df = feature_template.sample(n=100, replace=True, random_state=42)
-    background_scaled_df = scaler.predict(background_df)
+    input_scaled_df = pyfunc_predict(scaler, user_input_df)
+    background_scaled_df = pyfunc_predict(scaler, background_df)
 
-    # Predict
-    pred_result = model.predict(input_scaled_df)
+    pred_result = pyfunc_predict(model, input_scaled_df)
     prob = pred_result["predicted_probability"].iloc[0]
-
     st.success(f"Predicted 30-Day Mortality Probability: {prob:.2%}")
 
     with st.spinner("Generating SHAP Explanation..."):
@@ -164,15 +154,13 @@ if st.button(":mag: Predict 30-Day Mortality"):
 
         st.markdown("### :bar_chart: SHAP Feature Contributions")
         shap_ax = shap.plots.waterfall(shap_expl[0], show=False)
-        fig = shap_ax.figure
-        st.pyplot(fig)
+        st.pyplot(shap_ax.figure)
 
-
-        with st.expander("📘book: How to interpret this plot"):
+        with st.expander("📘 How to interpret this plot"):
             st.markdown("""
-            - **Red bars** increase risk.
-            - **Blue bars** decrease risk.
-            - The prediction builds from the baseline (average).
+            - **Red bars** increase predicted risk.
+            - **Blue bars** decrease predicted risk.
+            - Feature impacts are cumulative from the model's baseline.
             """)
 
         contrib_df = create_shap_table(user_input_df, shap_expl)
@@ -180,4 +168,4 @@ if st.button(":mag: Predict 30-Day Mortality"):
         st.dataframe(contrib_df, use_container_width=True, height=500)
 
 st.markdown("---")
-st.markdown("Developed by **Sangeeth George** — https://www.linkedin.com/in/sangeeth-george/ OncoAI (MIMIC-III)")
+st.markdown("Developed by **Sangeeth George** — [LinkedIn](https://www.linkedin.com/in/sangeeth-george/) | OncoAI (MIMIC-III)")

@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn
 import shap
+import joblib
+import requests
+from io import BytesIO
 from datetime import datetime
 from mlflow.tracking import MlflowClient
 
@@ -30,15 +33,13 @@ st.info("""
 """)
 
 # --- MLflow Configuration ---
-# --- Manual overrides for experiment/run/model URIs ---
-MANUAL_RUN_ID = "1944a6e3094e45d5bbc5df150539b019"
-MANUAL_MODEL_URI = "runs:/1944a6e3094e45d5bbc5df150539b019/onco_model"
-MANUAL_SCALER_URI = "models:/onco_scaler/1"
 
 # --- Artifact Loading ---
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-MODEL_DIR = os.path.join(PROJECT_ROOT, "models")
-os.makedirs(MODEL_DIR, exist_ok=True)
+USE_GITHUB_MODE = os.environ.get("ONCOAI_MODE", "mlflow") == "github"
+
+MODEL_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/model.pkl"
+SCALER_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/scaler.pkl"
+FEATURES_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/feature_names.txt"
 
 @st.cache_data
 def get_latest_model_run_id(model_name="OncoAICancerMortalityPredictor"):
@@ -52,26 +53,28 @@ def get_latest_model_run_id(model_name="OncoAICancerMortalityPredictor"):
 
 @st.cache_resource
 def load_artifacts():
-    client = MlflowClient()
-
-    # Load classifier and scaler
     try:
-        model = mlflow.pyfunc.load_model(MANUAL_MODEL_URI)
-        scaler = mlflow.pyfunc.load_model(MANUAL_SCALER_URI)
-    except Exception as e:
-        st.error(f"Failed to load model or scaler: {e}")
-        st.stop()
+        if USE_GITHUB_MODE:
+            st.info("🔄 Loading model from GitHub (Streamlit Cloud mode)")
+            model = joblib.load(BytesIO(requests.get(MODEL_GITHUB_URL).content))
+            scaler = joblib.load(BytesIO(requests.get(SCALER_GITHUB_URL).content))
+            feature_names = requests.get(FEATURES_GITHUB_URL).text.strip().splitlines()
+        else:
+            st.info("🧪 Loading model from MLflow (local dev mode)")
+            model = mlflow.pyfunc.load_model("models:/OncoAICancerMortalityPredictor/Latest")
+            scaler = mlflow.pyfunc.load_model("models:/onco_scaler/Latest")
 
-    # Load feature names from run artifacts (requires RUN ID, not URI)
-    try:
-        feature_file_path = client.download_artifacts(MANUAL_RUN_ID, "features/feature_names.txt")
-        with open(feature_file_path, "r") as f:
-            feature_names = [line.strip() for line in f if line.strip()]
+            client = MlflowClient()
+            run_id = client.search_model_versions("name='OncoAICancerMortalityPredictor'")[0].run_id
+            feature_path = client.download_artifacts(run_id, "features/feature_names.txt")
+            with open(feature_path, "r") as f:
+                feature_names = [line.strip() for line in f if line.strip()]
     except Exception as e:
-        st.error(f"Error loading feature names from model artifact: {e}")
+        st.error(f"🚨 Failed to load model artifacts: {e}")
         st.stop()
 
     return model, scaler, feature_names
+
 
 # --- Utility Functions ---
 def get_feature_template(feature_names):

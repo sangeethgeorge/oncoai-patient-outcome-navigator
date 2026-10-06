@@ -22,8 +22,9 @@ LABS_FILE = os.path.join(DATA_DIR, "all_labs_48h.parquet")
 
 ID_COLS = ['subject_id', 'hadm_id', 'icustay_id']
 LABEL_COL = 'mortality_30d'
-# Baseline covariates known at ICU admission, kept alongside the 48h lab/vital features.
-COHORT_FEATURES = ['age', 'n_cancer_codes']
+# Covariates known at ICU admission, kept alongside the 48h lab/vital features. ICD-derived counts
+# (e.g. n_cancer_codes) are excluded: MIMIC assigns ICD codes at discharge, after the prediction time.
+COHORT_FEATURES = ['age']
 
 
 def get_conn_str() -> str:

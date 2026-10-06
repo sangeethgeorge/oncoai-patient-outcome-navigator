@@ -20,6 +20,7 @@ def long_measurements():
     for h in range(0, 6):
         rows.append((1, "Heart Rate", t0 + pd.Timedelta(hours=h), 80 + 2 * h))
     rows.append((1, "Glucose", t0, 120.0))
+    rows.append((1, "INR(PT)", t0, 1.1))
     # Stay 2: flat heart rate, only heart rate measured
     for h in range(0, 3):
         rows.append((2, "Heart Rate", t0 + pd.Timedelta(hours=h), 70.0))
@@ -43,6 +44,7 @@ def test_time_series_features_one_row_per_stay(long_measurements):
     wide = compute_time_series_features(long_measurements, "charttime", "value", "label", "icustay_id")
     assert wide["icustay_id"].is_unique
     assert len(wide) == 2
+    assert "mean_inr_pt" in wide.columns  # punctuation normalized to snake_case
 
 
 def test_filter_high_coverage_keeps_common_labels(long_measurements):

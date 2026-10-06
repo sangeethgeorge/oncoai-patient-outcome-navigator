@@ -76,15 +76,14 @@ LOCAL_MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 # --- Helper to use MLflow PyFunc correctly (only if MLflow is used) ---
 def pyfunc_predict(model, df: pd.DataFrame) -> pd.DataFrame:
-    try:
-        # Assumes MLflow pyfunc model structure where predict method takes (context, dataframe)
-        # and returns a dataframe (or series that can be converted).
-        # The first argument (context) is None when called directly without MLflow tracking context.
-        return model.predict(None, df)
-    except AttributeError:
-        # If it's a joblib-loaded scikit-learn model, assume direct predict_proba call
-        # and return a DataFrame with a 'predicted_probability' column.
+    if hasattr(model, "predict_proba"):
+        # Plain scikit-learn estimator
         return pd.DataFrame({"predicted_probability": model.predict_proba(df)[:, 1]})
+    if hasattr(model, "metadata"):
+        # mlflow.pyfunc.PyFuncModel loaded from the registry: predict(data)
+        return pd.DataFrame(model.predict(df))
+    # Raw PythonModel wrapper unpickled from GitHub artifacts: predict(context, data)
+    return model.predict(None, df)
 
 
 # --- Load model artifacts ---
@@ -212,7 +211,7 @@ if metrics:
         - **Cohort:** {metrics['n_stays']:,} first ICU stays ≥ 48 h in adult cancer patients (MIMIC-III),
           {metrics['n_events']:,} deaths within 30 days ({metrics['prevalence']:.1%})
         - **ROC-AUC:** {metrics['test_roc_auc']:.3f} (95% CI {metrics['test_roc_auc_ci_low']:.3f}–{metrics['test_roc_auc_ci_high']:.3f}),
-          vs. {metrics['baseline_roc_auc']:.3f} for an age + cancer-code-count baseline
+          vs. {metrics['baseline_roc_auc']:.3f} for an age-only baseline
         - **PR-AUC:** {metrics['test_pr_auc']:.3f} · **Brier:** {metrics['test_brier']:.3f} · **Calibration slope:** {metrics['test_calibration_slope']:.2f}
         - Test set: {metrics['n_test']:,} stays, split by patient. Features chosen on the training split only.
         """)

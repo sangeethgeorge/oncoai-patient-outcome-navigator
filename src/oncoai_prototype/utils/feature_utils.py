@@ -1,6 +1,7 @@
 # src/oncoai_prototype/utils/feature_utils.py
 # Time series aggregation (mean, slope, etc.)
 
+import re
 import pandas as pd
 import numpy as np
 
@@ -39,7 +40,7 @@ def compute_time_series_features(
     stats['slope'] = (sums['_cov'] / sums['_var']).where(sums['_var'] > 0)
 
     wide_df = stats.unstack(label_col)
-    wide_df.columns = [f"{stat}_{label}".lower().replace(" ", "_") for stat, label in wide_df.columns]
+    wide_df.columns = [re.sub(r"[^a-z0-9]+", "_", f"{stat}_{label}".lower()).strip("_") for stat, label in wide_df.columns]
     return wide_df.reset_index()
 
 

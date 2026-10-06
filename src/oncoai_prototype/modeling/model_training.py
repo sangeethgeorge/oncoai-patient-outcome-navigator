@@ -30,7 +30,7 @@ DATA_PATH = os.path.join(PROJECT_ROOT, "data", "processed", "onco_features_clean
 MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
 TARGET = "mortality_30d"
 GROUP_COL = "subject_id"
-BASELINE_FEATURES = ["age", "n_cancer_codes"]  # known at ICU admission, no lab/vital data
+BASELINE_FEATURES = ["age"]  # known at ICU admission, no lab/vital data
 SEED = 42
 TOP_N = 10
 

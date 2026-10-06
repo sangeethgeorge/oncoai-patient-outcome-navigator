@@ -16,40 +16,36 @@ dist/
 build/
 *.egg-info/
 htmlcov/
+.mypy_cache/
 
-# Jupyter Notebook specific ignores
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Jupyter: notebooks can carry patient-level outputs
 .ipynb_checkpoints/
 *.ipynb
 
-# Data
-# Raw data, typically too large and often sensitive
-#data/raw/
-
-# Processed data, often regenerated from raw data or can be large
+# Data: MIMIC-III is credentialed (PhysioNet DUA) and must never be committed,
+# including anything derived from it at row level.
+data/raw/
 data/processed/
-
-# External data, potentially large or easily re-downloadable
 data/external/
+*.csv
+*.parquet
+*.csv.gz
 
-# MLflow
+# MLflow (input examples and plots contain patient-level rows)
 mlruns/
+**/mlruns/
+mlartifacts/
 .mlflowignore
+tmp_onco_model_artifacts/
 
-# Models (if not tracked by MLflow or other versioning)
-# Generally, models generated from training should not be committed to Git.
-# They are usually versioned by MLflow, DVC, or stored in object storage.
-#models/model.pkl
-#models/scaler.pkl
-#models/feature_names.txt
-
-# Reports and logs that can be regenerated
-reports/shap_plots/inference/
-reports/shap_plots/final/ # Assuming these are generated plots
-
-# Poetry
-poetry.lock # If you prefer to regenerate this based on pyproject.toml
-pyproject.toml
-.mypy_cache/
+# Generated reports and plots
+reports/shap_plots/
+shap_temp_waterfall.png
 
 # IDE-specific files
 .idea/
@@ -57,7 +53,6 @@ pyproject.toml
 *.swp
 *.bak
 *~
-.DS_Store
 
 # Operating System Files
 .DS_Store

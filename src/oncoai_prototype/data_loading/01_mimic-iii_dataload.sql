@@ -1,4 +1,7 @@
--- This SQL script loads the .csv files into tables from mimic-iii 
+-- Loads MIMIC-III v1.4 CSVs into Postgres.
+-- Server-side COPY needs an absolute path, passed as a psql variable:
+--   psql "$ONCOAI_POSTGRES_CONN_STR" -v mimic_dir="$PWD/data/raw/mimic-iii-full" \
+--        -f src/oncoai_prototype/data_loading/01_mimic-iii_dataload.sql
 -- --- PATIENTS Table ---
 DROP TABLE IF EXISTS PATIENTS; -- Safely drops the table if it exists
 
@@ -13,7 +16,8 @@ CREATE TABLE PATIENTS (			-- Table Schema from "https://mimic.mit.edu/docs/iii/t
 	EXPIRE_FLAG	VARCHAR(5)
 );
 
-COPY PATIENTS FROM '/Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/data/mimic-iii-full/PATIENTS.csv/PATIENTS.csv' WITH (FORMAT csv, HEADER true);
+\set csv_file :mimic_dir '/PATIENTS.csv/PATIENTS.csv'
+COPY PATIENTS FROM :'csv_file' WITH (FORMAT csv, HEADER true);
 
 DROP TABLE IF EXISTS ADMISSIONS; -- Safely drops the table if it exists
 
@@ -40,7 +44,8 @@ CREATE TABLE ADMISSIONS (			-- Table Schema from "https://mimic.mit.edu/docs/iii
 	HAS_CHARTEVENTS_DATA	SMALLINT		--Modified TINYINT to SMALLINT
 );
 
-COPY ADMISSIONS FROM '/Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/data/mimic-iii-full/ADMISSIONS.csv/ADMISSIONS.csv' WITH (FORMAT csv, HEADER true);
+\set csv_file :mimic_dir '/ADMISSIONS.csv/ADMISSIONS.csv'
+COPY ADMISSIONS FROM :'csv_file' WITH (FORMAT csv, HEADER true);
 
 -- --- ICUSTAYS Table ---
 DROP TABLE IF EXISTS ICUSTAYS; -- Safely drops the table if it exists
@@ -60,7 +65,8 @@ CREATE TABLE ICUSTAYS (			-- Table Schema from "https://mimic.mit.edu/docs/iii/t
 	LOS	DOUBLE PRECISION
 );
 
-COPY ICUSTAYS FROM '/Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/data/mimic-iii-full/ICUSTAYS.csv/ICUSTAYS.csv' WITH (FORMAT csv, HEADER true);
+\set csv_file :mimic_dir '/ICUSTAYS.csv/ICUSTAYS.csv'
+COPY ICUSTAYS FROM :'csv_file' WITH (FORMAT csv, HEADER true);
 
 -- --- DIAGNOSES_ICD Table ---
 DROP TABLE IF EXISTS DIAGNOSES_ICD; -- Safely drops the table if it exists
@@ -73,7 +79,8 @@ CREATE TABLE DIAGNOSES_ICD (			-- Table Schema from "https://mimic.mit.edu/docs/
 	ICD9_CODE	VARCHAR(10)
 );
 
-COPY DIAGNOSES_ICD FROM '/Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/data/mimic-iii-full/DIAGNOSES_ICD.csv/DIAGNOSES_ICD.csv' WITH (FORMAT csv, HEADER true);
+\set csv_file :mimic_dir '/DIAGNOSES_ICD.csv/DIAGNOSES_ICD.csv'
+COPY DIAGNOSES_ICD FROM :'csv_file' WITH (FORMAT csv, HEADER true);
 
 -- --- D_ICD_DIAGNOSES Table ---
 DROP TABLE IF EXISTS D_ICD_DIAGNOSES; -- Safely drops the table if it exists
@@ -85,7 +92,8 @@ CREATE TABLE D_ICD_DIAGNOSES (			-- Table Schema from "https://mimic.mit.edu/doc
 	LONG_TITLE	VARCHAR(300)
 );
 
-COPY D_ICD_DIAGNOSES FROM '/Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/data/mimic-iii-full/D_ICD_DIAGNOSES.csv/D_ICD_DIAGNOSES.csv' WITH (FORMAT csv, HEADER true);
+\set csv_file :mimic_dir '/D_ICD_DIAGNOSES.csv/D_ICD_DIAGNOSES.csv'
+COPY D_ICD_DIAGNOSES FROM :'csv_file' WITH (FORMAT csv, HEADER true);
 
 -- --- CHARTEVEVENTS Table ---
 DROP TABLE IF EXISTS CHARTEVENTS; -- Safely drops the table if it exists
@@ -96,8 +104,8 @@ CREATE TABLE CHARTEVENTS (			-- Table Schema from "https://mimic.mit.edu/docs/ii
 	HADM_ID	NUMERIC(7,0),
 	ICUSTAY_ID	NUMERIC(7,0),
 	ITEMID	NUMERIC(7,0),
-	CHARTTIME	DATE,
-	STORETIME	DATE,
+	CHARTTIME	TIMESTAMP(0),	-- was DATE, which dropped the time of day
+	STORETIME	TIMESTAMP(0),
 	CGID	NUMERIC(7,0),
 	VALUE	VARCHAR(200),
 	VALUENUM	NUMERIC,
@@ -108,7 +116,8 @@ CREATE TABLE CHARTEVENTS (			-- Table Schema from "https://mimic.mit.edu/docs/ii
 	STOPPED	VARCHAR(200)
 );
 
-COPY CHARTEVENTS FROM '/Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/data/mimic-iii-full/CHARTEVENTS.csv/CHARTEVENTS.csv' WITH (FORMAT csv, HEADER true);
+\set csv_file :mimic_dir '/CHARTEVENTS.csv/CHARTEVENTS.csv'
+COPY CHARTEVENTS FROM :'csv_file' WITH (FORMAT csv, HEADER true);
 
 -- --- D_ITEMS Table ---
 DROP TABLE IF EXISTS D_ITEMS; -- Safely drops the table if it exists
@@ -126,7 +135,8 @@ CREATE TABLE D_ITEMS (			-- Table Schema from "https://mimic.mit.edu/docs/iii/ta
 	CONCEPTID	INT
 );
 
-COPY D_ITEMS FROM '/Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/data/mimic-iii-full/D_ITEMS.csv/D_ITEMS.csv' WITH (FORMAT csv, HEADER true);
+\set csv_file :mimic_dir '/D_ITEMS.csv/D_ITEMS.csv'
+COPY D_ITEMS FROM :'csv_file' WITH (FORMAT csv, HEADER true);
 
 -- --- LABEVENTS Table ---
 DROP TABLE IF EXISTS LABEVENTS; -- Safely drops the table if it exists
@@ -143,7 +153,8 @@ CREATE TABLE LABEVENTS (			-- Table Schema from "https://mimic.mit.edu/docs/iii/
 	FLAG	VARCHAR(20)
 );
 
-COPY LABEVENTS FROM '/Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/data/mimic-iii-full/LABEVENTS.csv/LABEVENTS.csv' WITH (FORMAT csv, HEADER true);
+\set csv_file :mimic_dir '/LABEVENTS.csv/LABEVENTS.csv'
+COPY LABEVENTS FROM :'csv_file' WITH (FORMAT csv, HEADER true);
 
 -- --- NOTEEVENTS Table ---
 DROP TABLE IF EXISTS NOTEEVENTS; -- Safely drops the table if it exists
@@ -163,7 +174,8 @@ CREATE TABLE NOTEEVENTS (			-- Table Schema from "https://mimic.mit.edu/docs/iii
 	TEXT	TEXT
 );
 
-COPY NOTEEVENTS FROM '/Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/data/mimic-iii-full/NOTEEVENTS.csv/NOTEEVENTS.csv' WITH (FORMAT csv, HEADER true);
+\set csv_file :mimic_dir '/NOTEEVENTS.csv/NOTEEVENTS.csv'
+COPY NOTEEVENTS FROM :'csv_file' WITH (FORMAT csv, HEADER true);
 
 -- --- D_LABITEMS Table ---
 DROP TABLE IF EXISTS D_LABITEMS; -- Safely drops the table if it exists
@@ -178,4 +190,9 @@ CREATE TABLE D_LABITEMS (			-- Table Schema from "https://mimic.mit.edu/docs/iii
 	LOINC_CODE	VARCHAR(100)
 	);
 
-COPY D_LABITEMS FROM '/Users/sangeethgeorge/MyProjects/oncoai-patient-outcome-navigator/data/mimic-iii-full/D_LABITEMS.csv/D_LABITEMS.csv' WITH (FORMAT csv, HEADER true);
+\set csv_file :mimic_dir '/D_LABITEMS.csv/D_LABITEMS.csv'
+COPY D_LABITEMS FROM :'csv_file' WITH (FORMAT csv, HEADER true);
+
+-- --- Indexes for the cohort and 48h extraction views ---
+CREATE INDEX IF NOT EXISTS chartevents_icustay_idx ON CHARTEVENTS (ICUSTAY_ID);
+CREATE INDEX IF NOT EXISTS labevents_subject_hadm_idx ON LABEVENTS (SUBJECT_ID, HADM_ID);

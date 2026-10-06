@@ -8,8 +8,6 @@ SELECT
     c.subject_id,
     c.hadm_id,
     c.icustay_id,
-    c.icd9_code,
-    c.short_title,
     ce.itemid,
     di.label AS vitals_label,
     di.category AS vitals_category,
@@ -21,4 +19,5 @@ FROM chartevents ce
 JOIN cohort c ON ce.icustay_id = c.icustay_id
 JOIN d_items di ON ce.itemid = di.itemid
 WHERE ce.valuenum IS NOT NULL
-  AND ce.charttime BETWEEN c.intime AND c.intime + INTERVAL '48 hours';
+  AND ce.charttime >= c.intime
+  AND ce.charttime < c.intime + INTERVAL '48 hours';

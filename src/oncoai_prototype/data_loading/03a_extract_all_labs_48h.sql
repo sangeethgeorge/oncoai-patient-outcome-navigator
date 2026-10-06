@@ -8,8 +8,6 @@ SELECT
     c.subject_id,
     c.hadm_id,
     c.icustay_id,
-    c.icd9_code,
-    c.short_title,
     le.itemid,
     dl.label AS labs_label,
     dl.fluid,
@@ -22,4 +20,5 @@ FROM labevents le
 JOIN cohort c ON le.subject_id = c.subject_id AND le.hadm_id = c.hadm_id
 JOIN d_labitems dl ON le.itemid = dl.itemid
 WHERE le.valuenum IS NOT NULL
-  AND le.charttime BETWEEN c.intime AND c.intime + INTERVAL '48 hours';
+  AND le.charttime >= c.intime
+  AND le.charttime < c.intime + INTERVAL '48 hours';

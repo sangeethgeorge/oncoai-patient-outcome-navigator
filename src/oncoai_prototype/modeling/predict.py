@@ -12,6 +12,7 @@ from mlflow.types.utils import _infer_schema
 
 # --- Custom utility imports ---
 from oncoai_prototype.utils.io_utils import load_dataset
+from oncoai_prototype.utils.preprocessing import preprocess_for_inference
 from oncoai_prototype.utils.shap_utils import run_shap_explainer
 
 # --- Configuration ---
@@ -72,11 +73,10 @@ def run_inference():
     model, scaler, feature_names = load_artifacts()
 
     # Prepare input
-    drop_cols = ['icustay_id', 'subject_id', 'hadm_id', 'admittime', 'dob', 'dod', 'intime', 'outtime', 'icd9_code']
-    df_filtered = df.drop(columns=[col for col in drop_cols if col in df.columns], errors='ignore')
-    X_raw = df_filtered.reindex(columns=feature_names)
+    X_raw = preprocess_for_inference(df.drop(columns=["mortality_30d"], errors="ignore")).reindex(columns=feature_names)
     if X_raw.isnull().any().any():
-        print("⚠️ Warning: NaNs present in input data.")
+        raise ValueError("Input is missing model features: "
+                         f"{X_raw.columns[X_raw.isnull().all()].tolist()}")
 
     X_scaled = scaler.predict(X_raw)
 

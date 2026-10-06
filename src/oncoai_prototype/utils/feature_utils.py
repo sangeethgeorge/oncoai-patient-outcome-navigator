@@ -3,7 +3,6 @@
 
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
 
 
 def filter_high_coverage(df: pd.DataFrame, label_col: str, group_col: str = 'icustay_id', min_coverage: float = 0.95):
@@ -21,57 +20,40 @@ def compute_time_series_features(
     label_col: str,
     icu_id_col: str
 ) -> pd.DataFrame:
-    import pandas as pd
-    import numpy as np
-    from sklearn.linear_model import LinearRegression
-
-    df = df.copy()
+    """Per stay and measurement: mean, min, max, and least-squares slope (units per hour)."""
+    df = df[[icu_id_col, label_col, time_col, value_col]].copy()
     df[time_col] = pd.to_datetime(df[time_col])
+    df[value_col] = df[value_col].astype(float)
 
-    def featurize(group):
-        # Your featurize function already handles dropping these,
-        # but including include_groups=False in apply is better
-        # for future compatibility and silencing the warning.
-        # group = group.drop(columns=[icu_id_col, label_col], errors='ignore') # This line is now less critical but harmless
+    keys = [icu_id_col, label_col]
+    grouped = df.groupby(keys)[value_col]
+    stats = grouped.agg(['mean', 'min', 'max'])
 
-        times = (group[time_col] - group[time_col].min()).dt.total_seconds().values / 3600.0
-        values = group[value_col].values
+    # Vectorized OLS slope: cov(t, v) / var(t), with t in hours. NaN when all times coincide.
+    df['_t'] = (df[time_col] - df.groupby(keys)[time_col].transform('min')).dt.total_seconds() / 3600.0
+    df['_dt'] = df['_t'] - df.groupby(keys)['_t'].transform('mean')
+    df['_dv'] = df[value_col] - df.groupby(keys)[value_col].transform('mean')
+    df['_cov'] = df['_dt'] * df['_dv']
+    df['_var'] = df['_dt'] ** 2
+    sums = df.groupby(keys)[['_cov', '_var']].sum()
+    stats['slope'] = (sums['_cov'] / sums['_var']).where(sums['_var'] > 0)
 
-        if len(values) == 0:
-            return pd.Series({'mean': np.nan, 'min': np.nan, 'max': np.nan, 'slope': np.nan})
-
-        stats = {
-            'mean': np.mean(values),
-            'min': np.min(values),
-            'max': np.max(values),
-        }
-
-        if len(values) > 1:
-            model = LinearRegression().fit(times.reshape(-1, 1), values)
-            stats['slope'] = model.coef_[0]
-        else:
-            stats['slope'] = np.nan
-
-        return pd.Series(stats)
-
-    grouped = df.groupby([icu_id_col, label_col])
-    # FIX: Add 'include_groups=False' to silence the FutureWarning
-    long_df = grouped.apply(featurize, include_groups=False).reset_index() 
-
-    wide_df = long_df.pivot(index=icu_id_col, columns=label_col)
+    wide_df = stats.unstack(label_col)
     wide_df.columns = [f"{stat}_{label}".lower().replace(" ", "_") for stat, label in wide_df.columns]
-    wide_df.reset_index(inplace=True)
-
-    return wide_df
+    return wide_df.reset_index()
 
 
 def merge_features(cohort: pd.DataFrame, vitals: pd.DataFrame, labs: pd.DataFrame):
-    merged = cohort.merge(vitals, on="icustay_id", how="left")
-    merged = merged.merge(labs, on="icustay_id", how="left")
+    if cohort["icustay_id"].duplicated().any():
+        raise ValueError("Cohort has duplicate icustay_id rows; expected one row per ICU stay.")
+    merged = cohort.merge(vitals, on="icustay_id", how="left", validate="one_to_one")
+    merged = merged.merge(labs, on="icustay_id", how="left", validate="one_to_one")
     return merged
 
-def filter_and_impute(df: pd.DataFrame, min_col_coverage=0.8):
-    coverage = df.notna().mean()
-    df = df.loc[:, coverage > min_col_coverage]
-    df = df.dropna()
-    return df
+
+def filter_low_coverage_columns(df: pd.DataFrame, feature_cols: list, min_col_coverage=0.8):
+    """Drop feature columns observed in too few stays. Rows are kept; imputation
+    happens in the training pipeline using training-set statistics only."""
+    coverage = df[feature_cols].notna().mean()
+    dropped = coverage[coverage <= min_col_coverage].index
+    return df.drop(columns=dropped)

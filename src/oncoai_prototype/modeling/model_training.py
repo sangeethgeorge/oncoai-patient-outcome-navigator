@@ -1,12 +1,16 @@
 import os
-import time
+import json
+import shutil
 from datetime import datetime
 from typing import Any
 import pandas as pd
 import numpy as np
+import shap
+import xgboost as xgb
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score, classification_report
-import shutil
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import StratifiedGroupKFold
+from sklearn.metrics import roc_auc_score, average_precision_score, brier_score_loss, classification_report
 import mlflow
 import mlflow.pyfunc
 from mlflow.models import ModelSignature
@@ -17,12 +21,18 @@ from mlflow.tracking import MlflowClient
 
 # --- Custom utility imports ---
 from oncoai_prototype.utils.io_utils import load_dataset
-from oncoai_prototype.utils.preprocessing import train_test_impute_split, scale_features
-from oncoai_prototype.utils.leakage import check_for_leakage
+from oncoai_prototype.utils.preprocessing import NON_FEATURE_COLS, grouped_stratified_split
+from oncoai_prototype.utils.leakage import check_for_leakage, assert_unique_ids, assert_no_group_overlap
 
 # --- Configuration ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 DATA_PATH = os.path.join(PROJECT_ROOT, "data", "processed", "onco_features_cleaned.parquet")
+MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
+TARGET = "mortality_30d"
+GROUP_COL = "subject_id"
+BASELINE_FEATURES = ["age", "n_cancer_codes"]  # known at ICU admission, no lab/vital data
+SEED = 42
+TOP_N = 10
 
 # --- MLflow PyFunc Model Wrappers ---
 class SklearnWrapper(mlflow.pyfunc.PythonModel):
@@ -45,154 +55,207 @@ class ScalerWrapper(mlflow.pyfunc.PythonModel):
         scaled = self.scaler.transform(model_input)
         return pd.DataFrame(scaled, columns=model_input.columns)
 
-# --- Model Training ---
-def train_logistic_regression(X_train, y_train, X_test, y_test):
-    model = LogisticRegression(max_iter=1000, random_state=42)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    y_prob = model.predict_proba(X_test)[:, 1]
+# --- Building blocks (each fit only ever sees training rows) ---
+def impute_with_train_medians(X_train: pd.DataFrame, X_other: pd.DataFrame):
+    medians = X_train.median(numeric_only=True)
+    return X_train.fillna(medians), X_other.fillna(medians)
 
-    print("\nClassification Report:")
-    print(classification_report(y_test, y_pred))
-    print("ROC AUC Score:", roc_auc_score(y_test, y_prob))
+def select_features_shap(X_train: pd.DataFrame, y_train: pd.Series, top_n=TOP_N, seed=SEED) -> list:
+    """Rank features by mean |SHAP| of an XGBoost model fit on the training rows only."""
+    booster = xgb.XGBClassifier(n_estimators=100, max_depth=4, learning_rate=0.1,
+                                eval_metric='logloss', random_state=seed)
+    booster.fit(X_train, y_train)
+    shap_values = shap.TreeExplainer(booster)(X_train)
+    mean_abs = pd.Series(np.abs(shap_values.values).mean(axis=0), index=X_train.columns)
+    return mean_abs.sort_values(ascending=False).head(top_n).index.tolist()
 
-    return model, y_pred, y_prob
+def fit_logreg(X_train: pd.DataFrame, y_train: pd.Series, seed=SEED):
+    scaler = StandardScaler().fit(X_train)
+    X_scaled = pd.DataFrame(scaler.transform(X_train), columns=X_train.columns, index=X_train.index)
+    model = LogisticRegression(max_iter=1000, random_state=seed).fit(X_scaled, y_train)
+    return scaler, model
+
+def predict_proba(scaler, model, X: pd.DataFrame) -> np.ndarray:
+    X_scaled = pd.DataFrame(scaler.transform(X), columns=X.columns, index=X.index)
+    return model.predict_proba(X_scaled)[:, 1]
+
+# --- Evaluation ---
+def bootstrap_auc_ci(y_true, y_prob, n_boot=1000, seed=SEED, alpha=0.05):
+    rng = np.random.default_rng(seed)
+    y_true, y_prob = np.asarray(y_true), np.asarray(y_prob)
+    aucs = []
+    for _ in range(n_boot):
+        idx = rng.integers(0, len(y_true), len(y_true))
+        if len(np.unique(y_true[idx])) < 2:
+            continue
+        aucs.append(roc_auc_score(y_true[idx], y_prob[idx]))
+    return float(np.quantile(aucs, alpha / 2)), float(np.quantile(aucs, 1 - alpha / 2))
+
+def calibration_slope(y_true, y_prob):
+    """Slope of a logistic recalibration of y on logit(p); 1.0 is perfect, <1 means overfit."""
+    p = np.clip(np.asarray(y_prob), 1e-6, 1 - 1e-6)
+    logit = np.log(p / (1 - p)).reshape(-1, 1)
+    return float(LogisticRegression(penalty=None).fit(logit, y_true).coef_[0][0])
+
+def evaluate(y_true, y_prob) -> dict:
+    lo, hi = bootstrap_auc_ci(y_true, y_prob)
+    return {
+        "roc_auc": float(roc_auc_score(y_true, y_prob)),
+        "roc_auc_ci_low": lo,
+        "roc_auc_ci_high": hi,
+        "pr_auc": float(average_precision_score(y_true, y_prob)),
+        "brier": float(brier_score_loss(y_true, y_prob)),
+        "calibration_slope": calibration_slope(y_true, y_prob),
+    }
+
+def grouped_cv_auc(X_raw: pd.DataFrame, y: pd.Series, groups: pd.Series, top_n=TOP_N, seed=SEED, n_splits=5):
+    """Cross-validated AUC on the training set, re-running imputation and feature selection per fold."""
+    aucs = []
+    splitter = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    for tr, va in splitter.split(X_raw, y, groups):
+        X_tr, X_va = impute_with_train_medians(X_raw.iloc[tr], X_raw.iloc[va])
+        features = select_features_shap(X_tr, y.iloc[tr], top_n, seed)
+        scaler, model = fit_logreg(X_tr[features], y.iloc[tr], seed)
+        aucs.append(roc_auc_score(y.iloc[va], predict_proba(scaler, model, X_va[features])))
+    return float(np.mean(aucs)), float(np.std(aucs))
 
 # --- Pipeline Orchestration ---
-def run_training_pipeline():
-    print("Loading ML-ready cohort...")
-    df = load_dataset(DATA_PATH)
-    if df.empty:
-        print("Dataset not found or empty.")
-        return None
+def run_training_pipeline(df: pd.DataFrame, top_n=TOP_N, seed=SEED) -> dict:
+    assert_unique_ids(df, "icustay_id")
+    df = df.dropna(subset=[TARGET])
+    X_all = df.drop(columns=[TARGET] + [c for c in NON_FEATURE_COLS if c in df.columns])
+    X_all = check_for_leakage(X_all.select_dtypes(include=[np.number]), target_col=TARGET)
+    y = df[TARGET].astype(int)
+    groups = df[GROUP_COL]
 
-    columns_to_drop = [
-        'icustay_id', 'subject_id', 'hadm_id', 'admittime', 'dob',
-        'dod', 'intime', 'outtime', 'icd9_code'
-    ]
-    df_features = df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
-    target_column = 'mortality_30d'
+    cohort = {"n_stays": len(df), "n_events": int(y.sum()), "prevalence": float(y.mean())}
+    print(f"Cohort: {cohort['n_stays']} ICU stays, {cohort['n_events']} deaths ({cohort['prevalence']:.1%})")
 
-    print("Splitting + imputing data...")
-    X_train, X_test, y_train, y_test = train_test_impute_split(df_features, target_col=target_column)
+    print("Splitting by patient (stratified, grouped)...")
+    train_idx, test_idx = grouped_stratified_split(y, groups, test_size=0.2, random_state=seed)
+    assert_no_group_overlap(groups.loc[train_idx], groups.loc[test_idx], GROUP_COL)
+    X_train, X_test = impute_with_train_medians(X_all.loc[train_idx], X_all.loc[test_idx])
+    y_train, y_test = y.loc[train_idx], y.loc[test_idx]
 
-    print("Checking for data leakage...")
-    X_train_processed = check_for_leakage(X_train, target_col=target_column)
-    X_test_processed = X_test.reindex(columns=X_train_processed.columns)
+    print("Cross-validating on the training split...")
+    cv_mean, cv_std = grouped_cv_auc(X_all.loc[train_idx], y_train, groups.loc[train_idx], top_n, seed)
 
-    print("Scaling features...")
-    X_train_array, X_test_array, scaler = scale_features(X_train_processed, X_test_processed)
-    X_train_df = pd.DataFrame(X_train_array, columns=X_train_processed.columns)
-    X_test_df = pd.DataFrame(X_test_array, columns=X_test_processed.columns)
+    print("Selecting features on the training split...")
+    features = select_features_shap(X_train, y_train, top_n, seed)
+    print(f"Top {top_n} SHAP features: {features}")
 
     print("Training logistic regression model...")
-    model, y_pred, y_prob = train_logistic_regression(X_train_df, y_train, X_test_df, y_test)
+    scaler, model = fit_logreg(X_train[features], y_train, seed)
+    y_prob = predict_proba(scaler, model, X_test[features])
+    print(classification_report(y_test, (y_prob >= 0.5).astype(int), zero_division=0))
 
-    print("Model training complete.")
-    return model, y_test, y_pred, y_prob, X_train_processed, scaler, X_train_df
+    baseline_features = [f for f in BASELINE_FEATURES if f in X_train.columns]
+    b_scaler, b_model = fit_logreg(X_train[baseline_features], y_train, seed)
+    baseline_prob = predict_proba(b_scaler, b_model, X_test[baseline_features])
 
-def export_model_artifacts_locally(model_path, scaler_path, features_path, output_dir="models"):
+    metrics = {
+        **cohort,
+        "n_train": len(train_idx),
+        "n_test": len(test_idx),
+        "cv_roc_auc_mean": cv_mean,
+        "cv_roc_auc_std": cv_std,
+        **{f"test_{k}": v for k, v in evaluate(y_test, y_prob).items()},
+        **{f"baseline_{k}": v for k, v in evaluate(y_test, baseline_prob).items()},
+    }
+    print(f"Test ROC-AUC {metrics['test_roc_auc']:.3f} "
+          f"(95% CI {metrics['test_roc_auc_ci_low']:.3f}-{metrics['test_roc_auc_ci_high']:.3f}); "
+          f"baseline {baseline_features}: {metrics['baseline_roc_auc']:.3f}; "
+          f"5-fold CV {cv_mean:.3f} ± {cv_std:.3f}")
+
+    return {
+        "model": model,
+        "scaler": scaler,
+        "features": features,
+        "baseline_features": baseline_features,
+        "metrics": metrics,
+        "X_train": X_train[features],
+    }
+
+def feature_ranges(X_train: pd.DataFrame) -> dict:
+    """Aggregate input ranges for the dashboard widgets (no row-level values)."""
+    q = X_train.quantile([0.05, 0.5, 0.95])
+    return {c: {"low": round(float(q.loc[0.05, c]), 2), "default": round(float(q.loc[0.5, c]), 2),
+                "high": round(float(q.loc[0.95, c]), 2)} for c in X_train.columns}
+
+def export_model_artifacts_locally(model_path, scaler_path, features_path, output_dir=MODELS_DIR):
     os.makedirs(output_dir, exist_ok=True)
 
     # Strip file:// prefix if present
     def to_local_path(uri):
         return uri.replace("file://", "") if uri.startswith("file://") else uri
 
-    model_path = to_local_path(model_path)
-    scaler_path = to_local_path(scaler_path)
-    features_path = to_local_path(features_path)
-
-    shutil.copy(model_path, os.path.join(output_dir, "model.pkl"))
-    shutil.copy(scaler_path, os.path.join(output_dir, "scaler.pkl"))
-    shutil.copy(features_path, os.path.join(output_dir, "feature_names.txt"))
+    shutil.copy(to_local_path(model_path), os.path.join(output_dir, "model.pkl"))
+    shutil.copy(to_local_path(scaler_path), os.path.join(output_dir, "scaler.pkl"))
+    shutil.copy(to_local_path(features_path), os.path.join(output_dir, "feature_names.txt"))
     print(f"🗂 Artifacts copied to local folder: {output_dir}/")
 
 
 # --- Main Execution ---
 if __name__ == "__main__":
+    df = load_dataset(DATA_PATH)
+    if df.empty:
+        raise SystemExit("Dataset not found or empty. Run feature_engineering.py first.")
+
     mlflow.set_experiment("OncoAI-Mortality-Prediction")
     with mlflow.start_run(run_name=f"logreg_training_{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
-        result = run_training_pipeline()
-        if result is None:
-            print("Training aborted.")
-            exit()
+        result = run_training_pipeline(df, top_n=TOP_N, seed=SEED)
+        model, scaler, features, metrics = result["model"], result["scaler"], result["features"], result["metrics"]
+        X_train = result["X_train"]
 
-        model, y_test, y_pred, y_prob, X_train_orig, scaler, X_train_scaled_df = result
+        mlflow.log_params({"model_type": "LogisticRegression", "scaler": "StandardScaler",
+                           "feature_selection": "XGBoost mean |SHAP| on train split",
+                           "top_n": TOP_N, "seed": SEED, "split": "StratifiedGroupKFold by subject_id",
+                           "baseline_features": ",".join(result["baseline_features"])})
+        mlflow.log_metrics(metrics)
 
-        auc = roc_auc_score(y_test, y_prob)
-        mlflow.log_param("model_type", "LogisticRegression")
-        mlflow.log_param("scaler", "StandardScaler")
-        mlflow.log_metric("roc_auc", auc)
-
-        # Save feature names
-        feature_names = X_train_orig.columns.tolist()
         model_artifact_dir = os.path.join(PROJECT_ROOT, "tmp_onco_model_artifacts")
         os.makedirs(model_artifact_dir, exist_ok=True)
-
         features_txt_path = os.path.join(model_artifact_dir, "feature_names.txt")
         with open(features_txt_path, "w") as f:
-            for col in feature_names:
+            for col in features:
                 f.write(f"{col}\n")
-
-        # Log feature_names.txt as general run artifact (optional)
         mlflow.log_artifact(features_txt_path, artifact_path="features")
-        print(f"📁 Feature names logged to: {mlflow.get_artifact_uri('features/feature_names.txt')}")
 
-        # Log classifier model as PyFunc with embedded artifact
-        input_schema = Schema([ColSpec(DataType.double, col) for col in X_train_scaled_df.columns])
-        output_schema = Schema([
-            ColSpec(DataType.long, "predicted_mortality_30d"),
-            ColSpec(DataType.double, "predicted_probability")
-        ])
-        model_signature = ModelSignature(inputs=input_schema, outputs=output_schema)
-
-        wrapped_model = SklearnWrapper(model)
+        X_train_scaled_df = pd.DataFrame(scaler.transform(X_train), columns=features)
+        model_signature = ModelSignature(
+            inputs=Schema([ColSpec(DataType.double, col) for col in features]),
+            outputs=Schema([ColSpec(DataType.long, "predicted_mortality_30d"),
+                            ColSpec(DataType.double, "predicted_probability")]),
+        )
+        # No input_example: it would store patient-level rows in the run artifacts.
         mlflow.pyfunc.log_model(
             artifact_path="onco_model",
-            python_model=wrapped_model,
+            python_model=SklearnWrapper(model),
             signature=model_signature,
-            input_example=X_train_scaled_df.iloc[:5],
-            artifacts={"feature_names": features_txt_path},  # ✅ Embed inside model
+            artifacts={"feature_names": features_txt_path},
             registered_model_name="OncoAICancerMortalityPredictor"
         )
 
-        # Log scaler as PyFunc
-        scaler_input_example = X_train_orig.iloc[:5]
-        scaler_output_df = pd.DataFrame(scaler.transform(scaler_input_example), columns=X_train_orig.columns)
-        scaler_signature = ModelSignature(
-            inputs=_infer_schema(scaler_input_example),
-            outputs=_infer_schema(scaler_output_df)
-        )
-
-        wrapped_scaler = ScalerWrapper(scaler)
+        scaler_signature = ModelSignature(inputs=_infer_schema(X_train.iloc[:0]),
+                                          outputs=_infer_schema(X_train_scaled_df.iloc[:0]))
         mlflow.pyfunc.log_model(
             artifact_path="onco_scaler_model",
-            python_model=wrapped_scaler,
+            python_model=ScalerWrapper(scaler),
             signature=scaler_signature,
-            input_example=scaler_input_example,
             registered_model_name="onco_scaler"
         )
 
-        # Get run ID of current run
         run_id = mlflow.active_run().info.run_id
         client = MlflowClient()
-
-        # Use MLflow client to get local paths
-        model_path_local = client.download_artifacts(run_id, "onco_model/python_model.pkl")
-        scaler_path_local = client.download_artifacts(run_id, "onco_scaler_model/python_model.pkl")
-        features_path_local = client.download_artifacts(run_id, "features/feature_names.txt")
-
-        # Save to local 'models/' for GitHub upload
         export_model_artifacts_locally(
-            model_path=model_path_local,
-            scaler_path=scaler_path_local,
-            features_path=features_path_local
+            model_path=client.download_artifacts(run_id, "onco_model/python_model.pkl"),
+            scaler_path=client.download_artifacts(run_id, "onco_scaler_model/python_model.pkl"),
+            features_path=client.download_artifacts(run_id, "features/feature_names.txt"),
         )
+        with open(os.path.join(MODELS_DIR, "feature_ranges.json"), "w") as f:
+            json.dump(feature_ranges(X_train), f, indent=2)
+        with open(os.path.join(MODELS_DIR, "metrics.json"), "w") as f:
+            json.dump({k: (round(v, 4) if isinstance(v, float) else v) for k, v in metrics.items()}, f, indent=2)
 
-
-        # Optional: Clean up local artifacts directory
         shutil.rmtree(model_artifact_dir, ignore_errors=True)
-
         print("✅ Training run and model registration complete.")
-
-        

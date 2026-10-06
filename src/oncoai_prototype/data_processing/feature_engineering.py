@@ -1,61 +1,60 @@
 import os
 import pandas as pd
 import numpy as np
-import duckdb
-from sklearn.model_selection import train_test_split
-import xgboost as xgb
-import shap
 from dotenv import load_dotenv
 
+from oncoai_prototype.utils.db_utils import connect_to_postgres
 from oncoai_prototype.utils.feature_utils import (
     filter_high_coverage,
     compute_time_series_features,
     merge_features,
-    filter_and_impute,
+    filter_low_coverage_columns,
 )
-from oncoai_prototype.utils.leakage import check_for_leakage
+from oncoai_prototype.utils.leakage import assert_unique_ids
 
 # --- Config ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data", "processed")
-os.makedirs(DATA_DIR, exist_ok=True)
 
 FEATURE_FILE = os.path.join(DATA_DIR, "onco_features_cleaned.parquet")
 VITALS_FILE = os.path.join(DATA_DIR, "all_vitals_48h.parquet")
 LABS_FILE = os.path.join(DATA_DIR, "all_labs_48h.parquet")
 
-# Load environment
-load_dotenv()
-POSTGRES_CONN_STR = os.getenv("ONCOAI_POSTGRES_CONN_STR")
-if POSTGRES_CONN_STR is None:
-    raise ValueError("ONCOAI_POSTGRES_CONN_STR environment variable not set.")
+ID_COLS = ['subject_id', 'hadm_id', 'icustay_id']
+LABEL_COL = 'mortality_30d'
+# Baseline covariates known at ICU admission, kept alongside the 48h lab/vital features.
+COHORT_FEATURES = ['age', 'n_cancer_codes']
+
+
+def get_conn_str() -> str:
+    load_dotenv()
+    conn_str = os.getenv("ONCOAI_POSTGRES_CONN_STR")
+    if conn_str is None:
+        raise ValueError("ONCOAI_POSTGRES_CONN_STR environment variable not set.")
+    return conn_str
+
 
 # --- Load data from PostgreSQL via DuckDB ---
 def load_data():
-    try:
-        duckdb.sql("INSTALL postgres_scanner;")
-    except duckdb.CatalogException:
-        pass
-
-    duckdb.sql("LOAD postgres_scanner;")
-
-    queries = {
-        'labs': f"SELECT * FROM postgres_scan('{POSTGRES_CONN_STR}', 'public', 'all_labs_48h')",
-        'vitals': f"SELECT * FROM postgres_scan('{POSTGRES_CONN_STR}', 'public', 'all_vitals_48h')",
-        'cohort': f"SELECT * FROM postgres_scan('{POSTGRES_CONN_STR}', 'public', 'oncology_icu_base')"
-    }
+    conn_str = get_conn_str()
+    con = connect_to_postgres(conn_str)
+    tables = {'labs': 'all_labs_48h', 'vitals': 'all_vitals_48h', 'cohort': 'oncology_icu_base'}
 
     print("Fetching labs, vitals, and cohort data from PostgreSQL...")
-    return {name: duckdb.sql(query).df() for name, query in queries.items()}
+    try:
+        return {
+            name: con.sql(f"SELECT * FROM postgres_scan('{conn_str}', 'public', '{table}')").df()
+            for name, table in tables.items()
+        }
+    finally:
+        con.close()
 
-# --- Full pipeline with SHAP feature selection ---
-def build_onco_shap_features(top_n=10):
-    print("Loading source data...")
-    data = load_data()
 
-    print("Saving full vitals and labs as Parquet...")
-    data["vitals"].to_parquet(VITALS_FILE, index=False)
-    data["labs"].to_parquet(LABS_FILE, index=False)
+def build_features(data: dict) -> pd.DataFrame:
+    """All candidate features, one row per ICU stay. No split, no target-aware selection:
+    feature selection happens inside model training on the training split only."""
+    cohort = data['cohort']
+    assert_unique_ids(cohort, 'icustay_id')
 
     print("Filtering high-coverage vitals and labs...")
     vitals = filter_high_coverage(data['vitals'], label_col='vitals_label', min_coverage=0.95)
@@ -63,63 +62,38 @@ def build_onco_shap_features(top_n=10):
 
     print("Creating time-series features...")
     vitals_features = compute_time_series_features(
-        df=vitals,
-        time_col='charttime',
-        value_col='vitals_valuenum',
-        label_col='vitals_label',
-        icu_id_col='icustay_id'
+        df=vitals, time_col='charttime', value_col='vitals_valuenum',
+        label_col='vitals_label', icu_id_col='icustay_id'
     )
     labs_features = compute_time_series_features(
-        df=labs,
-        time_col='charttime',
-        value_col='labs_valuenum',
-        label_col='labs_label',
-        icu_id_col='icustay_id'
+        df=labs, time_col='charttime', value_col='labs_valuenum',
+        label_col='labs_label', icu_id_col='icustay_id'
     )
+    # A label present in both sources (e.g. vitals' 'BUN' vs labs' 'Urea Nitrogen') keeps both;
+    # an identical column name would collide, so prefix the chart-sourced copy.
+    shared = set(vitals_features.columns) & set(labs_features.columns) - {'icustay_id'}
+    vitals_features = vitals_features.rename(columns={c: f"chart_{c}" for c in shared})
 
     print("Merging cohort with vitals and labs...")
-    full_df = merge_features(data['cohort'], vitals_features, labs_features)
+    base = cohort[ID_COLS + COHORT_FEATURES + [LABEL_COL]]
+    full_df = merge_features(base, vitals_features, labs_features)
 
-    print("Filtering + imputing incomplete rows/columns...")
-    df_clean = filter_and_impute(full_df)
+    feature_cols = [c for c in full_df.columns if c not in ID_COLS + [LABEL_COL]]
+    full_df = filter_low_coverage_columns(full_df, feature_cols, min_col_coverage=0.8)
+    assert_unique_ids(full_df, 'icustay_id')
+    return full_df
 
-    print("Preparing data for SHAP feature selection...")
-    id_cols = ['subject_id', 'hadm_id', 'icustay_id']
-    label_col = 'mortality_30d'
-    X = df_clean.drop(columns=[label_col] + id_cols, errors='ignore').select_dtypes(include=[np.number])
-    y = df_clean[label_col]
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
-
-    print("Checking for data leakage...")
-    X_train = check_for_leakage(X_train, target_col="mortality_30d")
-    X_test = X_test[X_train.columns]
-
-    print("Fitting XGBoost for SHAP feature importance...")
-    model = xgb.XGBClassifier(
-        n_estimators=100,
-        max_depth=4,
-        learning_rate=0.1,
-        eval_metric='logloss'
-    )
-    model.fit(X_train, y_train)
-
-    print("Computing SHAP values...")
-    explainer = shap.Explainer(model, X_train)
-    shap_values = explainer(X_test)
-
-    mean_shap = pd.DataFrame(shap_values.values, columns=X_test.columns).abs().mean().sort_values(ascending=False)
-    top_features = mean_shap.head(top_n).index.tolist()
-    print(f"Top {top_n} SHAP features: {top_features}")
-
-    final_df = df_clean[id_cols + top_features + [label_col]].copy()
-    return final_df
 
 # --- Run Pipeline ---
 if __name__ == "__main__":
-    print("Starting OncoAI full feature + SHAP pipeline...")
-    final_df = build_onco_shap_features(top_n=10)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    print("Starting OncoAI feature pipeline...")
+    data = load_data()
+    data["vitals"].to_parquet(VITALS_FILE, index=False)
+    data["labs"].to_parquet(LABS_FILE, index=False)
+
+    final_df = build_features(data)
     final_df.to_parquet(FEATURE_FILE, index=False)
-    print(f"✅ Saved SHAP features to {FEATURE_FILE} — shape: {final_df.shape}")
-    print(f"✅ Saved all vitals to {VITALS_FILE}")
-    print(f"✅ Saved all labs to {LABS_FILE}")
+    n_events = int(final_df[LABEL_COL].sum())
+    print(f"✅ Saved features to {FEATURE_FILE} — shape: {final_df.shape}")
+    print(f"   Cohort: {len(final_df)} ICU stays, {n_events} deaths ({n_events / len(final_df):.1%})")

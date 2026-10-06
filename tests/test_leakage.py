@@ -1,58 +1,11 @@
-#tests/test_leakage.py
+# tests/test_leakage.py
 
-
-import os
-import pytest
 import pandas as pd
 import numpy as np
-import duckdb
-from dotenv import load_dotenv
+import pytest
 
-from oncoai_prototype.utils.leakage import check_for_leakage
-from oncoai_prototype.utils.feature_utils import (
-    filter_high_coverage,
-    compute_time_series_features,
-    merge_features,
-    filter_and_impute
-)
-from oncoai_prototype.data_processing.feature_engineering import load_data as load_actual_data
+from oncoai_prototype.utils.leakage import check_for_leakage, assert_unique_ids, assert_no_group_overlap
 
-
-# --- Real data fixture ---
-@pytest.fixture(scope="module")
-def leakage_test_df():
-    load_dotenv()
-
-    try:
-        duckdb.sql("INSTALL postgres_scanner;")
-    except duckdb.CatalogException:
-        pass
-    duckdb.sql("LOAD postgres_scanner;")
-
-    raw_data = load_actual_data()
-
-    vitals = filter_high_coverage(raw_data['vitals'], label_col='vitals_label', min_coverage=0.95)
-    labs = filter_high_coverage(raw_data['labs'], label_col='labs_label', min_coverage=0.70)
-
-    vitals_feat = compute_time_series_features(
-        vitals, time_col='charttime', value_col='vitals_valuenum',
-        label_col='vitals_label', icu_id_col='icustay_id'
-    )
-    labs_feat = compute_time_series_features(
-        labs, time_col='charttime', value_col='labs_valuenum',
-        label_col='labs_label', icu_id_col='icustay_id'
-    )
-
-    merged = merge_features(raw_data['cohort'], vitals_feat, labs_feat)
-    df_cleaned = filter_and_impute(merged, min_col_coverage=0.8)
-
-    if "mortality_30d" not in df_cleaned.columns:
-        pytest.skip("⚠️ Skipping: 'mortality_30d' not found in merged data.")
-
-    return df_cleaned.sample(n=min(50, len(df_cleaned)), random_state=42)
-
-
-# --- Synthetic unit tests ---
 
 def test_detects_leakage_with_target_column_in_name(capfd):
     df = pd.DataFrame({
@@ -81,13 +34,25 @@ def test_detects_no_leakage(capfd):
     assert df_checked.equals(df)
 
 
-# --- Realistic test using actual PostgreSQL-derived data ---
+def test_assert_unique_ids():
+    assert_unique_ids(pd.DataFrame({"icustay_id": [1, 2, 3]}))
+    with pytest.raises(ValueError, match="1 duplicate rows"):
+        assert_unique_ids(pd.DataFrame({"icustay_id": [1, 2, 2]}))
 
-def test_check_for_leakage_on_real_data(capfd, leakage_test_df):
-    X = leakage_test_df.drop(columns=["mortality_30d"], errors="ignore").select_dtypes(include=[np.number])
+
+def test_assert_no_group_overlap():
+    assert_no_group_overlap([1, 2], [3, 4])
+    with pytest.raises(ValueError, match="both train and test"):
+        assert_no_group_overlap([1, 2], [2, 3])
+
+
+# --- Live database check ---
+
+@pytest.mark.db
+def test_check_for_leakage_on_real_data(capfd, db_features_df):
+    X = db_features_df.drop(columns=["mortality_30d"]).select_dtypes(include=[np.number])
     X_checked = check_for_leakage(X, target_col="mortality_30d")
     out, _ = capfd.readouterr()
 
     assert "No significant leakage detected" in out
-    assert isinstance(X_checked, pd.DataFrame)
-    assert set(X_checked.columns).issubset(set(X.columns))  # no unexpected columns added
+    assert set(X_checked.columns) == set(X.columns)

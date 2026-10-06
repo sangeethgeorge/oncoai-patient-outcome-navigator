@@ -47,6 +47,9 @@ build-backend = "poetry.core.masonry.api"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 addopts = "--import-mode=importlib"
+markers = [
+    "db: needs the local MIMIC-III Postgres (ONCOAI_POSTGRES_CONN_STR); skipped when unreachable",
+]
 
 [tool.poetry-auto-export]
 output = "requirements.txt"

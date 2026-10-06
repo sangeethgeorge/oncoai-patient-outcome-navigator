@@ -1,310 +1,179 @@
-# OncoAI: Oncology ICU Outcomes Analytics & Risk Stratification
+# OncoAI: Oncology ICU Outcomes & Risk Stratification
 
-🧠 Cohort definition, curated data marts with data-quality tests, outcomes and utilization measures, and 30-day mortality risk stratification for critically ill cancer patients (MIMIC-III)
+Which critically ill cancer patients are most likely to die within 30 days of ICU admission, and can the first 48 hours of routine labs and vitals flag them?
+This repo answers that question on MIMIC-III. The work runs from cohort definition through curated, tested data tables to outcome measures, a risk model and a one-page brief.
 
-🔗 **Try the Streamlit App:** [oncoai-db.streamlit.app](https://oncoai-db.streamlit.app)
+**[Live dashboard](https://oncoai-db.streamlit.app)** · **[Executive brief](docs/executive_brief.md)** · **[Full results report](reports/quality_measures.md)** · **[Business rules](docs/business_rules.md)**
 
-⚠️ **For research and educational use only.** Not for clinical decision-making.
+> For research and education only. Not for clinical decision-making.
 
----
+## Results at a glance
 
-## 🔍 Overview
-
-Critically ill cancer patients face high ICU mortality, yet early risk signals are scattered across fragmented EHR data. OncoAI is a research project that:
-
-* **Defines the cohort from standard code sets:** Charlson ICD-9-CM cancer definitions (Quan 2005), grouped into hematologic, metastatic solid and non-metastatic solid, with documented [business rules](docs/business_rules.md)
-* **Curates analytics-ready tables with dbt:** staging, intermediate and mart models; LOINC-coded measurements; 40+ data tests; and a data-health monitor
-* **Reports outcomes and utilization the way critical-care studies do:** 30-day mortality, length of stay split by survival, and 48 h ICU readmission among ICU survivors (the SCCM indicator), with CMS-style small-cell suppression
-* **Stratifies 30-day mortality risk** from the first 48 h of labs and vitals, using a leakage-safe, patient-grouped and cross-fitted evaluation, and checks the model's calibration by subgroup
-* **Explains each prediction with SHAP** in an interactive Streamlit dashboard
-
-📄 **Start here:** [executive brief](docs/executive_brief.md) (one page, plain language) · [quality measures report](reports/quality_measures.md) · [business rules](docs/business_rules.md)
-
----
-
-## 🧱 Project Architecture
-
-```text
- MIMIC-III v1.4 CSVs
-        │  01_mimic-iii_dataload.sql
-        ▼
- PostgreSQL ──► 02_define_onco_cohort.sql      one row per ICU stay
-        │       03a/03b_extract_*_48h.sql       labs + vitals in [intime, intime+48h)
-        │  DuckDB postgres_scanner
-        ▼
- feature_engineering.py ──► data/processed/onco_features_cleaned.parquet   (local only)
-        │
-        ▼
- model_training.py   patient-grouped split → train-only SHAP feature selection
-        │            → logistic regression → metrics + MLflow run
-        │            → 5-fold cross-fitted risk for every stay ──► data/processed/oof_predictions.parquet
-        ▼
- models/  model.pkl · scaler.pkl · feature_names.txt · feature_ranges.json · metrics.json
-        │                                           │
-        ▼                                           ▼
- streamlit_app/onco_dashboard.py         dbt/ (dbt-duckdb, Postgres attached read-only)
- risk estimate + SHAP + model card         seeds: ICD-9 cancer categories · chart-item LOINC · plausibility limits
-                                           staging → intermediate → marts: fct_stay_outcomes,
-                                           dim_measurement_item, dq_measurement_coverage  + 40+ tests
-                                                    │
-                                                    ▼
-                                         analytics/run_quality_report.py ──► reports/quality_measures.md
-                                         (aggregates only, cells < 11 suppressed)    + reports/figures/
-```
-
----
-
-## 📊 Project Status (October 2026)
-
-| Module              | Status        | Notes |
-| :------------------ | :------------ | :---- |
-| Cohort definition   | ✅ Complete   | Charlson ICD-9-CM malignancy codes; first ICU stay ≥ 48 h per patient; one row per stay, enforced by a unique index |
-| ETL                 | ✅ Complete   | SQL views for the 48 h lab/vital windows; DuckDB reads them from Postgres |
-| Curated data layer  | ✅ Complete   | dbt-duckdb: staging/intermediate/marts, LOINC mapping, 40+ data tests, data-health monitor |
-| Outcomes & utilization | ✅ Complete | Mortality by cancer group and ICU type, LOS by survival, 48 h ICU readmission ([report](reports/quality_measures.md)) |
-| Feature engineering | ✅ Complete   | Mean/min/max/hourly slope for 26 labs and vital signs |
-| Modeling            | ✅ Complete   | Logistic regression; patient-grouped split, train-only feature selection, MLflow tracking |
-| SHAP explanations   | ✅ Complete   | Global (beeswarm) and per-patient (waterfall) plots |
-| Streamlit app       | ✅ Live       | [oncoai-db.streamlit.app](https://oncoai-db.streamlit.app) |
-| Tests               | ✅ Complete   | pytest unit tests on synthetic data; `-m db` integration tests; dbt data tests |
-| Case-mix-adjusted SMR | 💡 Planned  | Needs a first-24 h severity model; see [business rules §6](docs/business_rules.md#why-this-is-not-a-standardized-mortality-ratio) |
-| ICU-note NLP / LLM summaries | 💡 Planned | Not yet implemented |
-| Survival analysis (R)       | 💡 Planned | Not yet implemented |
-| Docker                      | 💡 Planned | |
-
----
-
-## 📁 Data Source
-
-* **Dataset:** [MIMIC-III Clinical Database v1.4](https://physionet.org/content/mimiciii/1.4/) (credentialed access via PhysioNet)
-* **Tables:** `patients`, `admissions`, `icustays`, `diagnoses_icd`, `labevents`, `d_labitems`, `chartevents`, `d_items`
-* **License:** PhysioNet Credentialed Health Data License 1.5.0
-
-> **No MIMIC data is distributed in this repository**, raw or derived. `data/`, `mlruns/`, `reports/shap_plots/`
-> the dbt DuckDB warehouse and notebooks are git-ignored. To reproduce, you need your own PhysioNet credentials and a local copy of MIMIC-III.
-> The published `models/` files contain only model coefficients and aggregate feature ranges; `reports/` holds aggregates
-> with every count between 1 and 10 suppressed.
-
-### Cohort definition
-
-| Criterion | Rule |
-| :-- | :-- |
-| Population | First ICU stay per patient, in an admission with a Charlson malignancy code: 140–172, 174–195.8, 200–208, metastatic 196–199.1, plus neuroendocrine 209.0–209.3 and 209.7. Non-melanoma skin (173), in situ, benign and uncertain-behavior codes are excluded ([details](docs/business_rules.md#2-icd-9-cancer-codes)) |
-| Observation window | First 48 h after ICU admission (`[intime, intime + 48h)`) |
-| Inclusion | ICU stay ≥ 48 h, so the outcome can't occur inside the feature window; age 18–89 |
-| Outcome | Death within 30 days of ICU admission (`dod <= intime + 30 days`) |
-| Unit | One row per ICU stay (enforced by a unique index) |
-
-**Cohort size:** 2,671 ICU stays (2,671 patients), 765 deaths within 30 days (28.6%).
+**Cohort:** 2,671 adults with cancer whose first ICU stay lasted at least 48 h. 765 of them (28.6%) died within 30 days.
 
 | Cancer group | Stays | 30-day mortality |
 | :-- | --: | --: |
 | Solid tumor, metastatic | 1,171 | 35.9% |
 | Solid tumor, non-metastatic | 937 | 19.3% |
-| Hematologic | 563 | 29.1% (acute leukemia: 40.7%) |
+| Hematologic | 563 | 29.1% (acute leukemia alone: 40.7%) |
 
-### Model performance
+**Risk model:** on 535 held-out patients, ROC-AUC is **0.768** (95% CI 0.722–0.812), against 0.549 for age alone. It is well calibrated (calibration slope 1.04).
 
-Held-out test set of 535 ICU stays (20%, split by patient, stratified). Features were chosen
-on the training split only (top 10 by mean |SHAP| of an XGBoost model), then fed to a
-standardized logistic regression.
+**Risk tiers:** sorting patients into thirds by predicted risk separates outcomes clearly.
 
-| Metric | Model (10 features) | Baseline (age only) |
+| Tier | Observed 30-day mortality | Predicted |
+| :-- | --: | --: |
+| Low | 9.8% | 10.9% |
+| Medium | 26.4% | 23.8% |
+| High | 49.8% | 51.6% |
+
+**Where the model falls short:** it under-predicts deaths for metastatic disease (observed/predicted 1.18) and lung cancer (1.31). Cancer stage isn't among its inputs.
+
+<img src="reports/figures/calibration_deciles.png" width="380" alt="Observed vs predicted 30-day mortality by decile of predicted risk">
+
+## Study design
+
+### Cohort selection
+
+| Step | Rule | Why |
 | :-- | :-- | :-- |
-| ROC-AUC (95% bootstrap CI) | **0.768** (0.722–0.812) | 0.549 (0.494–0.604) |
-| PR-AUC (prevalence 0.286) | 0.584 | 0.321 |
-| Brier score | 0.164 | 0.202 |
-| Calibration slope | 1.04 | 0.86 |
-| 5-fold grouped CV ROC-AUC (training split) | 0.740 ± 0.019 | — |
-| Cross-fitted ROC-AUC, all 2,671 stays (5 folds) | 0.752 | — |
+| Cancer | The admission carries a **Charlson malignancy** ICD-9-CM code (Quan 2005): 140–172, 174–195.8, 200–208, or metastatic 196–199.1. Malignant neuroendocrine codes (209.0–209.3, 209.7) are also included | A standard, published code set. Non-melanoma skin cancer (173), in-situ, benign and uncertain-behavior codes are excluded |
+| One stay per patient | The patient's first ICU stay | Keeps observations independent |
+| Adults | Age 18–89 | MIMIC shifts ages over 89 |
+| At least 48 h in the ICU | `outtime − intime ≥ 48 h` | The 48 h feature window must close before the outcome can happen in the ICU. This matches the standard MIMIC-III mortality benchmark |
 
-Selected features: min/mean BUN, mean creatinine, mean/max MCHC, mean anion gap, bicarbonate slope,
-min RDW, max heart rate, and age. ICD-derived predictors are excluded because MIMIC assigns ICD codes
-at discharge, after the prediction time.
+**Outcome:** death within 30 days of ICU admission, including deaths after discharge. This avoids counting patients discharged to hospice as survivors.
 
-**Risk tiers** (tertiles of cross-fitted risk): observed 30-day mortality is 9.8% in the low tier,
-26.4% in the medium tier and 49.8% in the high tier (predicted: 10.9%, 23.8%, 51.6%). The model
-under-predicts for metastatic disease (observed/predicted 1.18, 95% CI 1.07–1.30), which it can't see.
-See [reports/quality_measures.md](reports/quality_measures.md).
+**Reporting groups:** hematologic (any 200–208 code), then metastatic solid, then non-metastatic solid. This is how critical-care oncology studies compare outcomes.
 
-> **About the earlier 0.842 figure:** earlier versions of this project reported ROC-AUC 0.842. That number
-> was inflated by ICU stays duplicated across train and test, feature selection that used test rows, and a
-> cohort (stays ≤ 48 h) whose outcome could fall inside the feature window. It has been retired.
-> See [What changed in October 2026](#-what-changed-in-october-2026).
+Full code tables, edge cases and references are in [docs/business_rules.md](docs/business_rules.md).
 
----
+### Features and model
 
-## 🧪 Curated data layer and data quality
+- **Inputs:** labs and vitals from the first 48 h of the ICU stay, summarized per measurement as mean, min, max and hourly slope (26 measurements).
+  Measurements present in fewer than 80% of stays are dropped.
+- **Feature selection:** XGBoost ranks the features by mean |SHAP|, using the training split only, and keeps the top 10.
+- **Model:** standardized logistic regression, chosen so each prediction can be explained with SHAP in the dashboard.
+- **Selected features:** BUN (min, mean), creatinine (mean), MCHC (mean, max), anion gap (mean), bicarbonate slope, RDW (min), heart rate (max) and age.
+- **Diagnosis codes are never predictors.** MIMIC assigns them at discharge, after the prediction time.
 
-The `dbt/` project (dbt-duckdb) attaches the MIMIC Postgres read-only and builds a local DuckDB warehouse:
+### Evaluation
 
-| Layer | Models | What it does |
-| :-- | :-- | :-- |
-| Seeds | `icd9_cancer_category`, `chart_item_loinc`, `measurement_plausible_range` | Reference data we author: ICD-9 range → cancer category, a verified LOINC crosswalk for chart vitals, wide physiologic limits |
-| Staging | `stg_*` | One model per source: renames, casts, an integer ICD-9 key for range joins |
-| Intermediate | `int_stay_cancer_dx`, `int_icu_utilization`, `int_measurements_48h` | Cancer group and primary site; LOS, ICU death and 48 h readmission; labs and vitals in long format with LOINC codes |
-| Marts | `fct_stay_outcomes`, `dim_measurement_item`, `dq_measurement_coverage` | Analytic base table; data dictionary of items, units and LOINC coverage; a coverage and plausibility monitor by ICU type and CareVue/MetaVision |
+| Check | Result |
+| :-- | :-- |
+| Held-out test set (20%, split by patient) | ROC-AUC 0.768; PR-AUC 0.584 at 28.6% prevalence; Brier score 0.164 |
+| Age-only baseline on the same test set | ROC-AUC 0.549 |
+| 5-fold grouped cross-validation (training split) | ROC-AUC 0.740 ± 0.019 |
+| Cross-fitted predictions for all 2,671 stays | ROC-AUC 0.752. These feed the risk tiers and subgroup calibration, so every stay is scored by a model that never saw that patient |
 
-**Tests:**
-- Keys, accepted values, ranges and relationships.
-- The 48 h window holds for every measurement.
-- The cohort rule and the category seed agree.
-- Every feature-eligible measurement is LOINC-coded.
-- Readmission is defined only for ICU survivors.
-- Every stay has exactly one cross-fitted prediction.
+Imputation, feature selection and fitting happen inside each training split or fold, never on test rows.
 
-Two `warn` tests surface items recorded in more than one unit, and the monitor's flags. Their triage is in [docs/business_rules.md](docs/business_rules.md#5-units-plausibility-and-missing-data).
-Column descriptions in the YAML double as the data dictionary (`dbt docs generate`).
+**What the subgroup comparisons are not:** observed/predicted ratios here measure the *model's* calibration in a subgroup. They are not standardized mortality ratios, because the model doesn't adjust for case mix (admission type, comorbidity, code status).
+Mortality differences between ICUs therefore are not quality rankings. [Business rules §6](docs/business_rules.md#why-this-is-not-a-standardized-mortality-ratio) explains what a proper case-mix model would need.
 
-**Found by these checks:** the original cohort filter (ICD-9 140–239 plus a title match on "malignant"/"neoplasm")
-included 390 benign or pre-cancerous stays. It also silently excluded 387 stays with leukemia, lymphoma, myeloma or melanoma, whose ICD titles use neither word.
-Correcting it raised measured 30-day mortality from 25.1% to 28.6%.
-
----
-
-## 📈 Dashboard Features
-
-| Feature                     | Description |
-| :-------------------------- | :---------- |
-| Feature input form          | Enter the model's 48 h lab/vital summaries (ranges from the training set) |
-| 30-day mortality prediction | Logistic regression risk estimate |
-| SHAP explanation            | Waterfall plot and table of per-feature contributions vs. the training mean |
-| Model card                  | Held-out metrics, baseline comparison and cohort size |
-
----
-
-## ⚙️ Tech Stack
-
-| Layer      | Stack |
-| :--------- | :---- |
-| Data       | PostgreSQL 17, SQL, DuckDB (`postgres_scanner`), dbt (dbt-duckdb), pandas, PyArrow |
-| Standards  | ICD-9-CM (Charlson/Quan code sets), LOINC |
-| ML         | scikit-learn, XGBoost (feature ranking), SHAP, MLflow |
-| UI         | Streamlit, Matplotlib |
-| Dev        | Poetry, pytest, GitHub |
-
----
-
-## 🗂 Repository Structure
+## How it works
 
 ```text
-src/oncoai_prototype/
-  data_loading/      SQL: MIMIC load, cohort definition, 48 h lab/vital extraction
-  data_processing/   feature_engineering.py: one feature row per ICU stay
-  modeling/          model_training.py (train + evaluate + cross-fit + export), predict.py (batch inference)
-  analytics/         quality_measures.py (tiers, calibration, outcome summaries, suppression), run_quality_report.py
-  utils/             db, feature, preprocessing, leakage-check, SHAP and I/O helpers
-dbt/                 sources, seeds, staging/intermediate/mart models, data tests
-docs/                business_rules.md, executive_brief.md
-streamlit_app/       onco_dashboard.py
-models/              published model artifacts (see models/README.md)
-reports/             quality_measures.md + figures/ (aggregate, published); shap_plots/ (git-ignored)
-tests/               unit tests (synthetic data) + `db` integration tests
-data/, notebooks/    local-only working folders (contents git-ignored)
+MIMIC-III (PostgreSQL)
+  │  SQL: cohort view + 48 h lab/vital extraction views
+  ▼
+feature_engineering.py ─► model_training.py ─► models/ (model, scaler, features, metrics)
+                                │                  └─► Streamlit dashboard (risk + SHAP)
+                                └─► cross-fitted risk per stay
+                                          │
+dbt (DuckDB, Postgres read-only) ◄────────┘
+  seeds → staging → intermediate → marts, with data tests
+  ▼
+run_quality_report.py ─► reports/quality_measures.md + figures (aggregates only)
 ```
 
----
+**Stack:** PostgreSQL, SQL, DuckDB, dbt, pandas, scikit-learn, XGBoost, SHAP, MLflow, Streamlit. **Standards:** ICD-9-CM (Charlson code sets), LOINC.
 
-## 🚀 Setup Instructions
+## Data quality
 
-Requires Python 3.11, Poetry, PostgreSQL, and credentialed access to MIMIC-III v1.4.
+The dbt project builds curated tables with automated tests:
+
+- **Analytic table:** one row per stay with outcomes, length of stay and readmission.
+- **Data dictionary:** every lab and vital item, with its units and LOINC code.
+- **Data-health monitor:** coverage and implausible-value rates by ICU type and documentation system.
+
+The tests check:
+- keys, ranges and allowed values;
+- that every measurement falls inside the 48 h window;
+- that the cohort rule and the cancer-category table agree;
+- that every feature-eligible measurement is LOINC-coded;
+- that readmission is defined only for ICU survivors.
+
+**What the checks caught:** the original cohort filter matched diagnosis titles containing "malignant" or "neoplasm".
+- **It included 390 benign or pre-cancerous stays.**
+- **It missed 387 stays with leukemia, lymphoma, myeloma or melanoma**, whose titles use neither word.
+
+Switching to the Charlson code set fixed both errors and raised measured 30-day mortality from 25.1% to 28.6%.
+
+**Privacy:** no MIMIC data is in this repo, raw or derived. Published files are model coefficients and aggregate tables, and any count between 1 and 10 is suppressed.
+
+## Reproduce
+
+You need Python 3.11, Poetry, PostgreSQL, and [credentialed MIMIC-III v1.4 access](https://physionet.org/content/mimiciii/1.4/).
 
 ```bash
-# 1. Clone and install
-git clone https://github.com/sangeethgeorge/oncoai-patient-outcome-navigator.git
-cd oncoai-patient-outcome-navigator
 poetry install
+cp .env.example .env        # set ONCOAI_POSTGRES_CONN_STR (a read-only role is enough)
 
-# 2. Configure the database connection (never commit .env)
-cp .env.example .env   # then fill in ONCOAI_POSTGRES_CONN_STR (a read-only role is enough)
-
-# 3. Load the MIMIC-III CSVs into Postgres. Run as a superuser: server-side COPY needs
-#    an absolute path, and the Postgres server must be able to read the files.
-psql -U postgres -d mimic-iii -v mimic_dir="$PWD/data/raw/mimic-iii-full" \
-     -f src/oncoai_prototype/data_loading/01_mimic-iii_dataload.sql
-
-# 4. Build the cohort and the 48 h extraction views, then let the app role read them
+# Load MIMIC and build the cohort views (as the postgres superuser)
+psql -U postgres -d mimic-iii -v mimic_dir="$PWD/data/raw/mimic-iii-full" -f src/oncoai_prototype/data_loading/01_mimic-iii_dataload.sql
 for f in 02_define_onco_cohort 03a_extract_all_labs_48h 03b_extract_all_vitals_48h; do
   psql -U postgres -d mimic-iii -f src/oncoai_prototype/data_loading/$f.sql
 done
 psql -U postgres -d mimic-iii -c "GRANT SELECT ON oncology_icu_base, all_labs_48h, all_vitals_48h TO <app_role>;"
 
-# 5. Features -> training (writes models/*.pkl, feature_ranges.json, metrics.json,
-#    and data/processed/oof_predictions.parquet)
+# Features, model, curated tables, report
 poetry run python -m oncoai_prototype.data_processing.feature_engineering
 poetry run python -m oncoai_prototype.modeling.model_training
-
-# 6. Curated layer + data tests (dbt reads ONCOAI_POSTGRES_CONN_STR from the environment)
 set -a; source .env; set +a
 (cd dbt && poetry run dbt deps && poetry run dbt build)
-
-# 7. Outcomes / risk-stratification report (aggregates only)
 poetry run python -m oncoai_prototype.analytics.run_quality_report
 
-# 8. Tests: unit tests need no database; `-m db` runs the integration checks
-poetry run pytest -q
-poetry run pytest -q -m db
-
-# 9. Dashboard (ONCOAI_MODE=mlflow uses the local MLflow registry; the default, github,
-#    downloads models/ from this repository)
+# Tests (-m db runs the checks against the database) and the dashboard
+poetry run pytest -q && poetry run pytest -q -m db
 ONCOAI_MODE=mlflow poetry run streamlit run streamlit_app/onco_dashboard.py
 ```
 
----
+**Deployment:** the live dashboard runs on Streamlit Community Cloud. It downloads `models/` from `main`, so pushing retrained model files redeploys it.
 
-## ☁️ Deployment
+## Repository layout
 
-The app runs on Streamlit Community Cloud from `streamlit_app/onco_dashboard.py`. Dependencies
-come from `requirements.txt`, which is exported from `poetry.lock`. In the default `github` mode it
-downloads the files in `models/` from this repository's `main` branch. To deploy a retrained model,
-commit the regenerated `models/` files and push to `main`.
+```text
+src/oncoai_prototype/
+  data_loading/      SQL: MIMIC load, cohort, 48 h extraction
+  data_processing/   feature engineering
+  modeling/          training, cross-fitting, batch prediction
+  analytics/         outcome summaries, risk tiers, calibration, small-cell suppression, report
+dbt/                 seeds, staging/intermediate/mart models, data tests
+docs/                business rules, executive brief
+reports/             results report and figures (aggregate only)
+models/              published model files (see models/README.md)
+streamlit_app/       dashboard
+tests/               unit tests (synthetic data) and database tests
+```
 
----
+## Limitations
 
-## 🛠 What changed in October 2026
+- One hospital (Beth Israel Deaconess, 2001–2012), with no external validation.
+- Diagnosis codes don't capture cancer stage, treatment or code status. They are assigned at discharge, with no present-on-admission flag.
+- Requiring a 48 h ICU stay excludes the earliest deaths.
+- Mortality by ICU type is not risk-adjusted.
 
-A repository-wide review fixed several problems that had inflated the reported performance.
-A later clinical review aligned the cohort and measures with published definitions:
+## History
 
-* **Cohort codes:** the title-text filter was replaced with the Charlson ICD-9-CM malignancy codes.
-  This removed 390 benign, in-situ or non-melanoma skin stays and added 387 hematologic and melanoma stays that the filter had missed.
-  The cohort went from 2,674 stays (25.1% mortality) to 2,671 (28.6%), and the model was retrained (ROC-AUC 0.764 → 0.768).
-* **Measures:** reporting is by cancer group (hematologic / metastatic solid / non-metastatic solid). ICU readmission follows the SCCM 48 h definition among ICU survivors,
-  and length of stay is split by survival. Observed/predicted ratios are presented as model calibration, not as a standardized mortality ratio, because the model is not a case-mix model.
+Earlier versions reported ROC-AUC 0.842. That figure was inflated by duplicated ICU stays across train and test, feature selection that saw test rows, and a cohort whose outcome could fall inside the feature window, so it has been retired.
+An October 2026 review fixed those problems, reloaded vitals with full timestamps, and removed MIMIC-derived files from the git history. A later clinical review moved the cohort to the Charlson code set.
+The details are in [docs/business_rules.md](docs/business_rules.md#change-record-october-2026-cohort-correction).
 
-* **Duplicated ICU stays:** the cohort query produced one row per cancer ICD code, which turned
-  1,800 stays into 3,340 rows; copies of the same stay landed in both train and test.
-  It now aggregates codes per admission.
-* **Vitals timestamps:** `CHARTEVENTS.CHARTTIME` was loaded as `DATE`, which put every vital at
-  midnight and broke the 48 h window and the slopes. It's now loaded as `TIMESTAMP`.
-* **Outcome inside the feature window:** the cohort kept stays ≤ 48 h; it now requires ≥ 48 h.
-* **Selection leakage:** SHAP feature selection had used test rows. It now runs on the
-  training split only, including inside each CV fold.
-* **Look-ahead features:** discharge-assigned ICD counts are no longer predictors.
-* **Data hygiene:** MIMIC-derived files, MLflow runs and a `.env` file were removed from git and
-  from the git history.
+## License and citation
 
----
+The MIT License ([LICENSE](LICENSE)) covers this code only. MIMIC-III is governed by the PhysioNet Credentialed Health Data License 1.5.0. If you use this work, please cite:
 
-## ⚠️ Limitations
-* Single-center retrospective data (Beth Israel Deaconess Medical Center, 2001–2012); no external validation.
-* ICD-9 codes identify cancer diagnoses, not active treatment, stage or code status. They are assigned at discharge, with no present-on-admission flag.
-* The mortality model is not a case-mix model, so unit-level comparisons of mortality are not risk-adjusted (see [business rules §6](docs/business_rules.md#why-this-is-not-a-standardized-mortality-ratio)).
-* Feature selection and the train/test split use one random seed (42). The cross-validation spread (±0.019) shows how much results vary.
-* The dashboard takes manually entered values; it is a demonstration, not a clinical tool.
-* Do not use for clinical inference or decision-making.
-
----
-
-## 📜 License
-MIT License – see [LICENSE](LICENSE). The MIT license covers this code only. MIMIC-III data is governed by the PhysioNet Credentialed Health Data License.
-
-## 🙏 Acknowledgements & Citation
-
-MIMIC-III is provided by the MIT Laboratory for Computational Physiology. If you use this work, please cite:
-
-* Johnson AEW, Pollard TJ, Shen L, et al. MIMIC-III, a freely accessible critical care database. *Scientific Data* 3, 160035 (2016). https://doi.org/10.1038/sdata.2016.35
-* Johnson A, Pollard T, Mark R. MIMIC-III Clinical Database (version 1.4). *PhysioNet* (2016). https://doi.org/10.13026/C2XW26
-* Goldberger AL, et al. PhysioBank, PhysioToolkit, and PhysioNet. *Circulation* 101(23):e215–e220 (2000).
-
-Built with scikit-learn, XGBoost, SHAP, MLflow, DuckDB and Streamlit.
+- Johnson AEW, et al. MIMIC-III, a freely accessible critical care database. *Sci Data* 3, 160035 (2016). https://doi.org/10.1038/sdata.2016.35
+- Johnson A, Pollard T, Mark R. MIMIC-III Clinical Database (v1.4). *PhysioNet* (2016). https://doi.org/10.13026/C2XW26
+- Goldberger AL, et al. PhysioBank, PhysioToolkit, and PhysioNet. *Circulation* 101(23):e215–e220 (2000).

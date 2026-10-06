@@ -2,13 +2,12 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import os
+import json
 import matplotlib.pyplot as plt
 import shap
 import joblib
 import requests
 from io import BytesIO
-from datetime import datetime
-import mlflow
 
 # --- App Setup ---
 st.set_page_config(page_title="OncoAI Risk Dashboard", layout="wide")
@@ -72,17 +71,8 @@ USE_GITHUB_MODE = os.environ.get("ONCOAI_MODE", "github").lower() == "github"
 MODEL_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/model.pkl"
 SCALER_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/scaler.pkl"
 FEATURES_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/feature_names.txt"
-
-# --- Helper to use MLflow PyFunc correctly (only if MLflow is used) ---
-def pyfunc_predict(model, df: pd.DataFrame) -> pd.DataFrame:
-    try:
-        return model.predict(None, df)
-    except AttributeError:
-        # If it's a joblib model, assume direct predict call
-        return pd.DataFrame({"predicted_probability": model.predict_proba(df)[:, 1]})
-
-
-# --- Load model artifacts ---
+ARTIFACT_BASE_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models"
+LOCAL_MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
 
 # --- Helper to use MLflow PyFunc correctly (only if MLflow is used) ---
 def pyfunc_predict(model, df: pd.DataFrame) -> pd.DataFrame:
@@ -154,19 +144,34 @@ def load_artifacts():
 def get_feature_template(feature_names):
     return pd.DataFrame([{feature: 0.0 for feature in feature_names}])
 
-def get_feature_info():
-    return {
-        'mean_glucose': ("Mean Glucose (mg/dL)", 50.0, 300.0, 100.0),
-        'min_heart_rate': ("Min Heart Rate (bpm)", 40.0, 180.0, 60.0),
-        'mean_urea_nitrogen': ("Mean BUN (mg/dL)", 5.0, 100.0, 18.0),
-        'slope_chloride': ("Slope of Chloride", -5.0, 5.0, 0.0),
-        'max_bicarbonate': ("Max Bicarbonate (mEq/L)", 10.0, 40.0, 24.0),
-        'mean_rdw': ("Mean RDW (%)", 10.0, 20.0, 13.5),
-        'min_white_blood_cells': ("Min WBC (K/uL)", 1.0, 30.0, 6.0),
-        'mean_mchc': ("Mean MCHC (g/dL)", 30.0, 38.0, 34.0),
-        'mean_chloride': ("Mean Chloride (mEq/L)", 95.0, 115.0, 105.0),
-        'slope_bicarbonate': ("Slope of Bicarbonate", -5.0, 5.0, 0.0)
-    }
+@st.cache_data
+def load_json_artifact(name):
+    """Small aggregate JSON written by model_training.py (feature ranges, metrics)."""
+    local_path = os.path.join(LOCAL_MODELS_DIR, name)
+    if os.path.exists(local_path):
+        with open(local_path) as f:
+            return json.load(f)
+    try:
+        response = requests.get(f"{ARTIFACT_BASE_URL}/{name}", timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException:
+        return {}
+
+def feature_label(feature):
+    stat, _, measure = feature.partition("_")
+    return f"{stat.capitalize()} {measure.replace('_', ' ')}"
+
+def get_feature_info(feature_names):
+    ranges = load_json_artifact("feature_ranges.json")
+    info = {}
+    for feature in feature_names:
+        r = ranges.get(feature)
+        if r is None:
+            continue
+        span = max(r["high"] - r["low"], 1.0)
+        info[feature] = (feature_label(feature), r["low"] - span, r["high"] + span, r["default"])
+    return info
 
 def align_user_input(input_data, feature_template):
     return pd.DataFrame([input_data]).reindex(columns=feature_template.columns, fill_value=0.0)
@@ -196,8 +201,21 @@ def create_shap_table(user_input_df, shap_explanation):
 # --- Load Artifacts ---
 model, scaler, feature_names = load_artifacts()
 feature_template = get_feature_template(feature_names)
-feature_info = get_feature_info()
-background_df = get_feature_template(feature_names) # dummy background for SHAP
+feature_info = get_feature_info(feature_names)
+# SHAP background: the training-set mean, which is all zeros after standard scaling.
+background_scaled_df = pd.DataFrame([[0.0] * len(feature_names)], columns=feature_names)
+
+metrics = load_json_artifact("metrics.json")
+if metrics:
+    with st.expander("📊 Model performance (held-out test set)"):
+        st.markdown(f"""
+        - **Cohort:** {metrics['n_stays']:,} first ICU stays ≥ 48 h in adult cancer patients (MIMIC-III),
+          {metrics['n_events']:,} deaths within 30 days ({metrics['prevalence']:.1%})
+        - **ROC-AUC:** {metrics['test_roc_auc']:.3f} (95% CI {metrics['test_roc_auc_ci_low']:.3f}–{metrics['test_roc_auc_ci_high']:.3f}),
+          vs. {metrics['baseline_roc_auc']:.3f} for an age + cancer-code-count baseline
+        - **PR-AUC:** {metrics['test_pr_auc']:.3f} · **Brier:** {metrics['test_brier']:.3f} · **Calibration slope:** {metrics['test_calibration_slope']:.2f}
+        - Test set: {metrics['n_test']:,} stays, split by patient. Features chosen on the training split only.
+        """)
 
 # --- User Input UI ---
 st.subheader("📋 Enter Patient Features")
@@ -211,7 +229,7 @@ if missing:
 for i, feature in enumerate(display_features):
     col = col1 if i < len(display_features) // 2 else col2
     label, min_val, max_val, default_val = feature_info[feature]
-    input_data[feature] = col.number_input(label, min_value=min_val, max_value=max_val, value=default_val)
+    input_data[feature] = col.number_input(label, min_value=float(min_val), max_value=float(max_val), value=float(default_val))
 
 user_input_df = align_user_input(input_data, feature_template)
 
@@ -219,7 +237,6 @@ user_input_df = align_user_input(input_data, feature_template)
 # --- Prediction ---
 if st.button("🔍 Predict 30-Day Mortality"):
     input_scaled_df = pyfunc_predict(scaler, user_input_df)
-    background_scaled_df = pyfunc_predict(scaler, background_df)
 
     pred_result = pyfunc_predict(model, input_scaled_df)
     prob = pred_result["predicted_probability"].iloc[0]

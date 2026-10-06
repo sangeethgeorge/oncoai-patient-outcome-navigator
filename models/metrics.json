@@ -1,0 +1,21 @@
+{
+  "n_stays": 2674,
+  "n_events": 672,
+  "prevalence": 0.2513,
+  "n_train": 2139,
+  "n_test": 535,
+  "cv_roc_auc_mean": 0.7415,
+  "cv_roc_auc_std": 0.0384,
+  "test_roc_auc": 0.7635,
+  "test_roc_auc_ci_low": 0.7181,
+  "test_roc_auc_ci_high": 0.8068,
+  "test_pr_auc": 0.5947,
+  "test_brier": 0.1718,
+  "test_calibration_slope": 1.0261,
+  "baseline_roc_auc": 0.583,
+  "baseline_roc_auc_ci_low": 0.5319,
+  "baseline_roc_auc_ci_high": 0.6345,
+  "baseline_pr_auc": 0.3656,
+  "baseline_brier": 0.2082,
+  "baseline_calibration_slope": 1.8796
+}

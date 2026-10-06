@@ -1,10 +1,10 @@
+min_urea_nitrogen
 mean_mchc
-min_heart_rate
-mean_chloride
 slope_bicarbonate
+slope_glucose
+mean_anion_gap
+max_heart_rate
 mean_urea_nitrogen
-min_white_blood_cells
-mean_rdw
-max_bicarbonate
-mean_glucose
-slope_chloride
+min_rdw
+mean_respiratory_rate
+min_creatinine

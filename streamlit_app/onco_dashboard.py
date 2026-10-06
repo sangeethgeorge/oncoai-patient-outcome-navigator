@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 import json
+import hashlib
 import matplotlib.pyplot as plt
 import shap
 import joblib
@@ -68,9 +69,6 @@ with st.expander("🧭 How to Use"):
 # --- Configuration ---
 USE_GITHUB_MODE = os.environ.get("ONCOAI_MODE", "github").lower() == "github"
 
-MODEL_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/model.pkl"
-SCALER_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/scaler.pkl"
-FEATURES_GITHUB_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models/feature_names.txt"
 ARTIFACT_BASE_URL = "https://raw.githubusercontent.com/sangeethgeorge/oncoai-patient-outcome-navigator/main/models"
 LOCAL_MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
 
@@ -87,82 +85,62 @@ def pyfunc_predict(model, df: pd.DataFrame) -> pd.DataFrame:
 
 
 # --- Load model artifacts ---
-@st.cache_resource
-def load_artifacts():
-    # No debug print for USE_GITHUB_MODE here, as it's for internal logic
+def fetch_artifact(name: str) -> bytes:
+    """One file from models/: local copy in mlflow (dev) mode, this repo's main branch in github mode."""
+    if not USE_GITHUB_MODE:
+        with open(os.path.join(LOCAL_MODELS_DIR, name), "rb") as f:
+            return f.read()
+    response = requests.get(f"{ARTIFACT_BASE_URL}/{name}", timeout=15)
+    response.raise_for_status()
+    return response.content
+
+@st.cache_data(ttl=300, show_spinner=False)
+def artifact_release() -> str:
+    """Fingerprint of the published model release, re-checked every 5 minutes. Used as the
+    cache key for load_artifacts, so a newly pushed model replaces the cached one."""
     try:
         if USE_GITHUB_MODE:
-            st.info("🔄 Loading model from GitHub (Streamlit Cloud mode)")
-            model_response = requests.get(MODEL_GITHUB_URL)
-            scaler_response = requests.get(SCALER_GITHUB_URL)
-            features_response = requests.get(FEATURES_GITHUB_URL)
-
-            # Check for successful responses
-            model_response.raise_for_status()
-            scaler_response.raise_for_status()
-            features_response.raise_for_status()
-
-            model = joblib.load(BytesIO(model_response.content))
-            scaler = joblib.load(BytesIO(scaler_response.content))
-            feature_names = features_response.text.strip().splitlines()
-
-        else:
-            # This block will ONLY be executed if USE_GITHUB_MODE is False
-            # Therefore, mlflow imports are only attempted if this path is taken.
-            import mlflow.sklearn
-            from mlflow.tracking import MlflowClient
-
-            def get_latest_model_run_id(model_name="OncoAICancerMortalityPredictor"):
-                client = MlflowClient()
-                versions = client.search_model_versions(f"name='{model_name}'")
-                if not versions:
-                    return None
-                latest = sorted(versions, key=lambda v: v.creation_timestamp, reverse=True)[0]
-                return latest.run_id
-
-            st.info("🧪 Loading model from MLflow (local dev mode)")
-            model = mlflow.pyfunc.load_model("models:/OncoAICancerMortalityPredictor/Latest")
-            scaler = mlflow.pyfunc.load_model("models:/onco_scaler/Latest")
-            run_id = get_latest_model_run_id()
-            feature_path = MlflowClient().download_artifacts(run_id, "features/feature_names.txt")
-            with open(feature_path, "r") as f:
-                feature_names = [line.strip() for line in f if line.strip()]
-
-    except requests.exceptions.RequestException as req_e:
-        st.error(f"🚨 Network or file not found error during GitHub artifact loading: {req_e}")
-        st.stop()
+            return hashlib.sha256(fetch_artifact("feature_names.txt") + fetch_artifact("metrics.json")).hexdigest()
+        from mlflow.tracking import MlflowClient
+        versions = MlflowClient().search_model_versions("name='OncoAICancerMortalityPredictor'")
+        return str(max(int(v.version) for v in versions))
     except Exception as e:
-        # This will catch joblib errors, or any other unexpected errors
+        st.error(f"🚨 Could not reach the model artifacts: {e}")
+        st.stop()
+
+@st.cache_resource(max_entries=1, show_spinner="Loading model...")
+def load_artifacts(release: str):
+    """Model, scaler, feature list, input ranges and metrics, loaded together from one release."""
+    try:
+        if USE_GITHUB_MODE:
+            model = joblib.load(BytesIO(fetch_artifact("model.pkl")))
+            scaler = joblib.load(BytesIO(fetch_artifact("scaler.pkl")))
+            feature_names = fetch_artifact("feature_names.txt").decode().split()
+        else:
+            import mlflow.pyfunc
+            from mlflow.tracking import MlflowClient
+            model = mlflow.pyfunc.load_model(f"models:/OncoAICancerMortalityPredictor/{release}")
+            scaler = mlflow.pyfunc.load_model("models:/onco_scaler/Latest")
+            run_id = MlflowClient().get_model_version("OncoAICancerMortalityPredictor", release).run_id
+            with open(MlflowClient().download_artifacts(run_id, "features/feature_names.txt")) as f:
+                feature_names = f.read().split()
+        ranges = json.loads(fetch_artifact("feature_ranges.json"))
+        metrics = json.loads(fetch_artifact("metrics.json"))
+    except Exception as e:
         st.error(f"🚨 Failed to load model artifacts: {e}")
         st.stop()
-
-    return model, scaler, feature_names
+    return model, scaler, feature_names, ranges, metrics
 
 
 # --- Utility Functions ---
 def get_feature_template(feature_names):
     return pd.DataFrame([{feature: 0.0 for feature in feature_names}])
 
-@st.cache_data
-def load_json_artifact(name):
-    """Small aggregate JSON written by model_training.py (feature ranges, metrics)."""
-    local_path = os.path.join(LOCAL_MODELS_DIR, name)
-    if os.path.exists(local_path):
-        with open(local_path) as f:
-            return json.load(f)
-    try:
-        response = requests.get(f"{ARTIFACT_BASE_URL}/{name}", timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException:
-        return {}
-
 def feature_label(feature):
     stat, _, measure = feature.partition("_")
     return f"{stat.capitalize()} {measure.replace('_', ' ')}"
 
-def get_feature_info(feature_names):
-    ranges = load_json_artifact("feature_ranges.json")
+def get_feature_info(feature_names, ranges):
     info = {}
     for feature in feature_names:
         r = ranges.get(feature)
@@ -173,7 +151,10 @@ def get_feature_info(feature_names):
     return info
 
 def align_user_input(input_data, feature_template):
-    return pd.DataFrame([input_data]).reindex(columns=feature_template.columns, fill_value=0.0)
+    aligned = pd.DataFrame([input_data]).reindex(columns=feature_template.columns)
+    if aligned.isnull().values.any():
+        raise ValueError(f"No input for model features: {aligned.columns[aligned.isnull().any()].tolist()}")
+    return aligned
 
 def generate_shap_explanation(model, user_input_scaled, background_scaled):
     def predict_fn(x):
@@ -198,13 +179,12 @@ def create_shap_table(user_input_df, shap_explanation):
     return shap_df.sort_values(by='|SHAP|', ascending=False)
 
 # --- Load Artifacts ---
-model, scaler, feature_names = load_artifacts()
+model, scaler, feature_names, feature_ranges, metrics = load_artifacts(artifact_release())
 feature_template = get_feature_template(feature_names)
-feature_info = get_feature_info(feature_names)
+feature_info = get_feature_info(feature_names, feature_ranges)
 # SHAP background: the training-set mean, which is all zeros after standard scaling.
 background_scaled_df = pd.DataFrame([[0.0] * len(feature_names)], columns=feature_names)
 
-metrics = load_json_artifact("metrics.json")
 if metrics:
     with st.expander("📊 Model performance (held-out test set)"):
         st.markdown(f"""
@@ -223,7 +203,10 @@ col1, col2 = st.columns(2)
 display_features = [f for f in feature_names if f in feature_info]
 missing = [f for f in feature_names if f not in feature_info]
 if missing:
-    st.warning(f"The following features are missing from feature_info: {missing}")
+    # Every model input needs a widget; predicting with placeholder values would be meaningless.
+    st.error(f"🚨 Model artifacts are out of sync: no input range for {missing}. "
+             "Reload the page in a few minutes, or reboot the app.")
+    st.stop()
 
 for i, feature in enumerate(display_features):
     col = col1 if i < len(display_features) // 2 else col2

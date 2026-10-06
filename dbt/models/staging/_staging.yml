@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: stg_cohort
+    description: Oncology ICU cohort, one row per first ICU stay (>= 48 h) of an adult with a malignant or in-situ neoplasm code.
+    columns:
+      - name: icustay_id
+        data_tests: [unique, not_null]
+      - name: subject_id
+        description: Patient. One stay per patient by construction.
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: source('mimic', 'patients')
+                field: subject_id
+      - name: hadm_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: source('mimic', 'admissions')
+                field: hadm_id
+      - name: age
+        description: Age in years at hospital admission; MIMIC shifts ages over 89, so the cohort stops at 89.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments: {min_value: 18, max_value: 89}
+      - name: mortality_30d
+        description: 1 if the patient died within 30 days of ICU admission (intime), from patients.dod.
+        data_tests:
+          - accepted_values:
+              arguments: {values: [0, 1]}
+
+  - name: stg_diagnoses
+    columns:
+      - name: icd4
+        description: First four ICD-9 digits as an integer (174.9 -> 1749, 185 -> 1850); null for E and V codes.
+
+  - name: stg_oof_predictions
+    columns:
+      - name: icustay_id
+        data_tests: [unique, not_null]
+      - name: pred_prob
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments: {min_value: 0, max_value: 1}

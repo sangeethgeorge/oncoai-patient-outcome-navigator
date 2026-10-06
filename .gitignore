@@ -57,3 +57,13 @@ shap_temp_waterfall.png
 # Operating System Files
 .DS_Store
 Thumbs.db
+
+# dbt: build outputs and the local DuckDB warehouse (row-level MIMIC data)
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
+*.duckdb
+*.duckdb.wal
+# dbt seeds are reference data we author (code ranges, LOINC crosswalk), not MIMIC rows
+!dbt/seeds/*.csv

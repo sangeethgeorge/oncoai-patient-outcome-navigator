@@ -1,10 +1,10 @@
 min_urea_nitrogen
-mean_mchc
-slope_bicarbonate
-slope_glucose
-mean_anion_gap
-max_heart_rate
+mean_creatinine
 mean_urea_nitrogen
+mean_mchc
+max_mchc
+mean_anion_gap
+slope_bicarbonate
 min_rdw
-mean_respiratory_rate
-min_creatinine
+age
+max_heart_rate

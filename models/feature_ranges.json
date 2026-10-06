@@ -2,51 +2,51 @@
   "min_urea_nitrogen": {
     "low": 6.0,
     "default": 16.0,
-    "high": 56.0
+    "high": 60.0
+  },
+  "mean_creatinine": {
+    "low": 0.43,
+    "default": 0.87,
+    "high": 3.3
+  },
+  "mean_urea_nitrogen": {
+    "low": 7.96,
+    "default": 19.29,
+    "high": 67.43
   },
   "mean_mchc": {
     "low": 31.35,
-    "default": 33.93,
-    "high": 36.15
+    "default": 33.95,
+    "high": 36.17
+  },
+  "max_mchc": {
+    "low": 31.8,
+    "default": 34.5,
+    "high": 37.0
+  },
+  "mean_anion_gap": {
+    "low": 9.5,
+    "default": 13.0,
+    "high": 19.57
   },
   "slope_bicarbonate": {
     "low": -0.14,
     "default": 0.03,
     "high": 0.21
   },
-  "slope_glucose": {
-    "low": -3.49,
-    "default": -0.32,
-    "high": 2.04
+  "min_rdw": {
+    "low": 12.8,
+    "default": 15.2,
+    "high": 19.92
   },
-  "mean_anion_gap": {
-    "low": 9.33,
-    "default": 13.0,
-    "high": 19.01
+  "age": {
+    "low": 41.0,
+    "default": 66.0,
+    "high": 85.0
   },
   "max_heart_rate": {
-    "low": 82.0,
-    "default": 113.0,
-    "high": 155.0
-  },
-  "mean_urea_nitrogen": {
-    "low": 7.5,
-    "default": 18.5,
-    "high": 62.44
-  },
-  "min_rdw": {
-    "low": 12.7,
-    "default": 14.9,
-    "high": 19.71
-  },
-  "mean_respiratory_rate": {
-    "low": 13.69,
-    "default": 18.77,
-    "high": 26.5
-  },
-  "min_creatinine": {
-    "low": 0.4,
-    "default": 0.8,
-    "high": 2.7
+    "low": 83.0,
+    "default": 115.0,
+    "high": 157.0
   }
 }

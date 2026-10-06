@@ -1,0 +1,15 @@
+# Local build: MIMIC-III Postgres is attached read-only; curated tables land in a local DuckDB file
+# under data/processed/ (git-ignored, row-level). Export ONCOAI_POSTGRES_CONN_STR first (see .env.example).
+oncoai:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('ONCOAI_DUCKDB_PATH', '../data/processed/oncoai.duckdb') }}"
+      threads: 4
+      extensions: [postgres]
+      attach:
+        - path: "{{ env_var('ONCOAI_POSTGRES_CONN_STR') }}"
+          type: postgres
+          alias: mimic
+          read_only: true

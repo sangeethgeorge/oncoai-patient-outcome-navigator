@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: fct_stay_outcomes
+    description: >
+      Analytic base table, one row per cohort ICU stay. Row-level; lives only
+      in the local DuckDB file. Publish aggregates only, with small-cell suppression.
+    columns:
+      - name: icustay_id
+        data_tests: [unique, not_null]
+      - name: cancer_group
+        data_tests: [not_null]
+      - name: first_careunit
+        data_tests: [not_null]
+      - name: pred_prob
+        description: Cross-fitted probability of 30-day death from the 48 h lab/vital model. Not a case-mix-adjusted expected value; see docs/business_rules.md §6.
+        data_tests: [not_null]
+      - name: hospital_expire_flag
+        description: Died before hospital discharge.
+
+  - name: dim_measurement_item
+    description: Data dictionary of lab and chart items in the 48 h window, with LOINC coverage and units.
+    columns:
+      - name: n_units
+        description: Distinct units recorded for the item. More than one needs a conversion rule before use.
+
+  - name: dq_measurement_coverage
+    description: >
+      Data-health monitor by care unit and documentation system (CareVue/MetaVision). flag_coverage_gap:
+      coverage differs from the cohort-wide rate by 15 points or more. flag_implausible_values: more than
+      1% of values fall outside seed measurement_plausible_range.

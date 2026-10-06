@@ -1,0 +1,7 @@
+itemid,label,dbsource,loinc_code,loinc_long_common_name,verified_against
+211,Heart Rate,carevue,8867-4,Heart rate,NLM Clinical Tables LOINC API 2026-10-06
+220045,Heart Rate,metavision,8867-4,Heart rate,NLM Clinical Tables LOINC API 2026-10-06
+618,Respiratory Rate,carevue,9279-1,Respiratory rate,NLM Clinical Tables LOINC API 2026-10-06
+220210,Respiratory Rate,metavision,9279-1,Respiratory rate,NLM Clinical Tables LOINC API 2026-10-06
+814,Hemoglobin,carevue,718-7,Hemoglobin [Mass/volume] in Blood,NLM Clinical Tables LOINC API 2026-10-06
+220228,Hemoglobin,metavision,718-7,Hemoglobin [Mass/volume] in Blood,NLM Clinical Tables LOINC API 2026-10-06

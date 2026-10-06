@@ -1,0 +1,17 @@
+loinc_code,measurement,unit,low,high,rationale
+2951-2,Sodium,mEq/L,100,200,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+2823-3,Potassium,mEq/L,1,12,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+2075-0,Chloride,mEq/L,50,160,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+1963-8,Bicarbonate,mEq/L,2,60,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+1863-0,Anion Gap,mEq/L,-10,60,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+3094-0,Urea Nitrogen,mg/dL,1,300,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+2160-0,Creatinine,mg/dL,0.1,30,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+2345-7,Glucose,mg/dL,10,2000,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+718-7,Hemoglobin,g/dL,2,25,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+4544-3,Hematocrit,%,5,75,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+777-3,Platelet Count,K/uL,1,2000,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+804-5,White Blood Cells,K/uL,0,500,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+786-4,MCHC,g/dL,20,45,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+788-0,RDW,%,8,40,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+8867-4,Heart Rate,bpm,0,300,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors
+9279-1,Respiratory Rate,breaths/min,0,80,Wide physiologic limit (analyst judgement); values beyond it are almost always unit or entry errors

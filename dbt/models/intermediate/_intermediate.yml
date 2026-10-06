@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: int_stay_cancer_dx
+    description: Cancer group and primary site per stay from ICD-9 ranges in seed icd9_cancer_category. See docs/business_rules.md.
+    columns:
+      - name: icustay_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_cohort')
+                field: icustay_id
+      - name: cancer_group
+        description: hematologic if any 200-208 code; else solid_metastatic if any 196-199.1 or 209.7 code; else solid_nonmetastatic.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments: {values: [hematologic, solid_metastatic, solid_nonmetastatic]}
+      - name: primary_site
+        description: Site category of the lowest seq_num primary-site code; 'unknown_primary' when only secondary codes are present.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [head_and_neck, digestive, respiratory_thoracic, bone_soft_tissue_melanoma, breast,
+                         genitourinary, cns_and_eye, other_solid, hematologic, neuroendocrine, unknown_primary]
+      - name: heme_subtype
+        description: Hematologic stays only; acute leukemia > lymphoma > myeloma > chronic leukemia > other (first match).
+        data_tests:
+          - accepted_values:
+              arguments: {values: [acute_leukemia, lymphoma, myeloma, chronic_leukemia, other_hematologic]}
+      - name: metastatic_flag
+        description: Any secondary or disseminated malignancy code (196-199.1, 209.7), the Charlson metastatic definition.
+      - name: hematologic_and_solid_flag
+        description: Both a hematologic and a solid primary code; grouped as hematologic, counted for transparency.
+
+  - name: int_icu_utilization
+    columns:
+      - name: icustay_id
+        data_tests: [unique, not_null]
+      - name: first_careunit
+        description: Unit type of the ICU stay. NICU is neonatal and must not appear in an adult cohort.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments: {values: [CCU, CSRU, MICU, SICU, TSICU]}
+      - name: icu_los_days
+        description: outtime - intime, in days. At least 2 by the cohort's 48 h rule.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments: {min_value: 2}
+      - name: hosp_los_days
+        description: dischtime - admittime, in days.
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments: {min_value: 0}
+      - name: icu_death
+        description: In-hospital death no later than 6 h after ICU discharge.
+        data_tests: [not_null]
+      - name: icu_readmit_48h
+        description: ICU survivors only (null if icu_death). Another ICU stay in the same hospital admission starting within 48 h of ICU discharge (SCCM indicator).
+      - name: icu_readmit_same_adm
+        description: ICU survivors only (null if icu_death). Any later ICU stay in the same hospital admission.
+
+  - name: int_measurements_48h
+    description: Labs and chart vitals in the first 48 h, long format, with LOINC codes and their source.

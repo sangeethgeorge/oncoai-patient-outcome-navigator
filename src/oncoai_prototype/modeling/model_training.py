@@ -27,6 +27,7 @@ from oncoai_prototype.utils.leakage import check_for_leakage, assert_unique_ids,
 # --- Configuration ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 DATA_PATH = os.path.join(PROJECT_ROOT, "data", "processed", "onco_features_cleaned.parquet")
+OOF_PATH = os.path.join(PROJECT_ROOT, "data", "processed", "oof_predictions.parquet")
 MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
 TARGET = "mortality_30d"
 GROUP_COL = "subject_id"
@@ -119,6 +120,22 @@ def grouped_cv_auc(X_raw: pd.DataFrame, y: pd.Series, groups: pd.Series, top_n=T
         aucs.append(roc_auc_score(y.iloc[va], predict_proba(scaler, model, X_va[features])))
     return float(np.mean(aucs)), float(np.std(aucs))
 
+def cross_fitted_predictions(X_raw: pd.DataFrame, y: pd.Series, groups: pd.Series, ids: pd.Series,
+                             top_n=TOP_N, seed=SEED, n_splits=5) -> pd.DataFrame:
+    """Out-of-fold risk for every stay: each stay is scored by a model (imputation, feature selection
+    and fit) that never saw that patient. Used for risk tiers and observed/expected ratios, not for
+    the published test metrics."""
+    parts = []
+    splitter = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    for fold, (tr, va) in enumerate(splitter.split(X_raw, y, groups)):
+        assert_no_group_overlap(groups.iloc[tr], groups.iloc[va], GROUP_COL)
+        X_tr, X_va = impute_with_train_medians(X_raw.iloc[tr], X_raw.iloc[va])
+        features = select_features_shap(X_tr, y.iloc[tr], top_n, seed)
+        scaler, model = fit_logreg(X_tr[features], y.iloc[tr], seed)
+        parts.append(pd.DataFrame({"icustay_id": ids.iloc[va].to_numpy(), "fold": fold,
+                                   "pred_prob": predict_proba(scaler, model, X_va[features])}))
+    return pd.concat(parts, ignore_index=True)
+
 # --- Pipeline Orchestration ---
 def run_training_pipeline(df: pd.DataFrame, top_n=TOP_N, seed=SEED) -> dict:
     assert_unique_ids(df, "icustay_id")
@@ -153,6 +170,11 @@ def run_training_pipeline(df: pd.DataFrame, top_n=TOP_N, seed=SEED) -> dict:
     b_scaler, b_model = fit_logreg(X_train[baseline_features], y_train, seed)
     baseline_prob = predict_proba(b_scaler, b_model, X_test[baseline_features])
 
+    print("Cross-fitting out-of-fold predictions for every stay (analytics only)...")
+    oof = cross_fitted_predictions(X_all, y, groups, df["icustay_id"], top_n, seed)
+    y_oof = y.set_axis(df["icustay_id"]).loc[oof["icustay_id"]]
+    oof_eval = evaluate(y_oof, oof["pred_prob"])
+
     metrics = {
         **cohort,
         "n_train": len(train_idx),
@@ -161,6 +183,9 @@ def run_training_pipeline(df: pd.DataFrame, top_n=TOP_N, seed=SEED) -> dict:
         "cv_roc_auc_std": cv_std,
         **{f"test_{k}": v for k, v in evaluate(y_test, y_prob).items()},
         **{f"baseline_{k}": v for k, v in evaluate(y_test, baseline_prob).items()},
+        "oof_roc_auc": oof_eval["roc_auc"],
+        "oof_brier": oof_eval["brier"],
+        "oof_calibration_slope": oof_eval["calibration_slope"],
     }
     print(f"Test ROC-AUC {metrics['test_roc_auc']:.3f} "
           f"(95% CI {metrics['test_roc_auc_ci_low']:.3f}-{metrics['test_roc_auc_ci_high']:.3f}); "
@@ -174,6 +199,7 @@ def run_training_pipeline(df: pd.DataFrame, top_n=TOP_N, seed=SEED) -> dict:
         "baseline_features": baseline_features,
         "metrics": metrics,
         "X_train": X_train[features],
+        "oof_predictions": oof,
     }
 
 def feature_ranges(X_train: pd.DataFrame) -> dict:
@@ -254,6 +280,8 @@ if __name__ == "__main__":
         )
         with open(os.path.join(MODELS_DIR, "feature_ranges.json"), "w") as f:
             json.dump(feature_ranges(X_train), f, indent=2)
+        # Row-level and derived from MIMIC: stays in the git-ignored data/processed/ folder.
+        result["oof_predictions"].to_parquet(OOF_PATH, index=False)
         with open(os.path.join(MODELS_DIR, "metrics.json"), "w") as f:
             json.dump({k: (round(v, 4) if isinstance(v, float) else v) for k, v in metrics.items()}, f, indent=2)
 

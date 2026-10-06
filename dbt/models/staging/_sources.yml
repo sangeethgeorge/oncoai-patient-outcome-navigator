@@ -1,0 +1,27 @@
+version: 2
+
+sources:
+  - name: mimic
+    description: MIMIC-III v1.4 in the local Postgres, attached read-only. Cohort and 48 h extraction views are built by src/oncoai_prototype/data_loading/02-03*.sql.
+    database: mimic
+    schema: public
+    tables:
+      - name: patients
+      - name: admissions
+      - name: icustays
+      - name: diagnoses_icd
+      - name: d_labitems
+      - name: oncology_icu_base
+        description: Cohort view, one row per ICU stay (02_define_onco_cohort.sql).
+      - name: all_labs_48h
+        description: Lab results in [intime, intime + 48h) for cohort stays (03a).
+      - name: all_vitals_48h
+        description: Chart events in [intime, intime + 48h) for cohort stays (03b).
+
+  - name: modeling
+    description: Outputs of oncoai_prototype.modeling.model_training (row-level, git-ignored).
+    tables:
+      - name: oof_predictions
+        description: Cross-fitted 30-day mortality probability for every cohort stay.
+        meta:
+          external_location: "{{ env_var('ONCOAI_OOF_PATH', '../data/processed/oof_predictions.parquet') }}"

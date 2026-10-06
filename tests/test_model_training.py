@@ -17,6 +17,10 @@ def test_feature_selection_never_sees_test_rows(synthetic_features_df, monkeypat
 
     monkeypatch.setattr(mt, "select_features_shap", recording_select)
     monkeypatch.setattr(mt, "grouped_cv_auc", lambda *a, **k: (0.0, 0.0))  # keep the test fast
+    # Cross-fitting scores every stay by design (analytics only); this test is about the published model
+    monkeypatch.setattr(mt, "cross_fitted_predictions",
+                        lambda X, y, groups, ids, *a, **k: pd.DataFrame({"icustay_id": ids.to_numpy(), "fold": 0,
+                                                                          "pred_prob": np.linspace(0.1, 0.9, len(ids))}))
     result = mt.run_training_pipeline(synthetic_features_df, top_n=4)
 
     df = synthetic_features_df

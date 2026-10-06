@@ -1,0 +1,15 @@
+icd4_low,icd4_high,site_category,is_hematologic,is_secondary,icd9_range
+1400,1499,head_and_neck,false,false,140-149
+1500,1599,digestive,false,false,150-159
+1600,1659,respiratory_thoracic,false,false,160-165
+1700,1729,bone_soft_tissue_melanoma,false,false,170-172
+1740,1759,breast,false,false,174-175
+1760,1769,bone_soft_tissue_melanoma,false,false,176 (Kaposi sarcoma)
+1790,1899,genitourinary,false,false,179-189
+1900,1929,cns_and_eye,false,false,190-192
+1930,1959,other_solid,false,false,193-195
+1960,1989,secondary,false,true,196-198 (secondary/metastatic)
+1990,1991,secondary,false,true,199.0-199.1 (disseminated / site unspecified; Charlson counts as metastatic)
+2000,2089,hematologic,true,false,200-208
+2090,2093,neuroendocrine,false,false,209.0-209.3
+2097,2097,secondary,false,true,209.7 (secondary neuroendocrine)

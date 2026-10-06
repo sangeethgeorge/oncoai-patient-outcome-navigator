@@ -52,3 +52,26 @@ def test_extraction_window_is_first_48h(db_conn_str):
             SELECT COUNT(*) AS outside FROM {view} v JOIN oncology_icu_base c USING (icustay_id)
             WHERE v.charttime < c.intime OR v.charttime >= c.intime + INTERVAL '48 hours'""")
         assert row.loc[0, "outside"] == 0, view
+
+
+def test_cohort_has_only_charlson_malignancies(db_conn_str):
+    # Every stay must carry a Charlson malignancy (140-172, 174-195.8, 200-208), metastatic (196-199.1)
+    # or neuroendocrine (209.0-209.3, 209.7) code; skin 173, in situ, benign and uncertain codes don't qualify
+    row = pg(db_conn_str, """
+        SELECT COUNT(*) AS bad FROM oncology_icu_base b
+        WHERE NOT EXISTS (
+            SELECT 1 FROM unnest(b.icd9_codes) AS code
+            WHERE CAST(SUBSTRING(code FROM 1 FOR 3) AS INTEGER) BETWEEN 140 AND 172
+               OR CAST(SUBSTRING(code FROM 1 FOR 3) AS INTEGER) BETWEEN 174 AND 198
+               OR SUBSTRING(code FROM 1 FOR 4) IN ('1990', '1991', '2090', '2091', '2092', '2093', '2097')
+               OR CAST(SUBSTRING(code FROM 1 FOR 3) AS INTEGER) BETWEEN 200 AND 208)""")
+    assert row.loc[0, "bad"] == 0
+
+
+def test_cohort_keeps_hematologic_cancers(db_conn_str):
+    # Leukemia/lymphoma/myeloma titles lack the words "malignant"/"neoplasm"; a title filter dropped them
+    row = pg(db_conn_str, """
+        SELECT COUNT(*) AS n FROM oncology_icu_base b
+        WHERE EXISTS (SELECT 1 FROM unnest(b.icd9_codes) AS code
+                      WHERE CAST(SUBSTRING(code FROM 1 FOR 3) AS INTEGER) BETWEEN 200 AND 208)""")
+    assert row.loc[0, "n"] > 0

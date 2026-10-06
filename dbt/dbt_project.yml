@@ -1,0 +1,29 @@
+name: oncoai
+version: "1.2.0"
+config-version: 2
+profile: oncoai
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages", "logs"]
+
+models:
+  oncoai:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: table
+    marts:
+      +materialized: table
+
+seeds:
+  oncoai:
+    icd9_cancer_category:
+      +column_types: {icd4_low: integer, icd4_high: integer, is_hematologic: boolean, is_secondary: boolean}
+    chart_item_loinc:
+      +column_types: {itemid: integer, loinc_code: varchar}
+    measurement_plausible_range:
+      +column_types: {low: double, high: double}
